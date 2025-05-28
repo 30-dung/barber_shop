@@ -7,89 +7,117 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tài khoản')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      backgroundColor: AppColors.primaryDarkBlue,
+      body: SafeArea(
         child: Column(
           children: [
+            // Header với avatar
             Container(
-              width: double.infinity,
               padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.secondaryWhite,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.secondaryGrey.withOpacity(0.1),
-                    spreadRadius: 1,
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: const Column(
+              child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: 40,
-                    backgroundColor: AppColors.primaryOrange,
+                  const CircleAvatar(
+                    radius: 30,
+                    backgroundColor: AppColors.secondaryWhite,
                     child: Icon(
                       Icons.person,
-                      size: 40,
-                      color: AppColors.secondaryWhite,
+                      size: 35,
+                      color: AppColors.primaryDarkBlue,
                     ),
                   ),
-                  SizedBox(height: 12),
-                  Text(
-                    'Nguyễn Văn A',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    '0987654321',
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Chưa có hàng thành viên',
                     style: TextStyle(
-                      fontSize: 14,
-                      color: AppColors.secondaryGrey,
+                      color: AppColors.secondaryWhite,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        'Đăng ký ngay',
+                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.white70,
+                        size: 14,
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            _buildMenuItem(
-              icon: Icons.history,
-              title: 'Lịch sử đặt hẹn',
-              onTap: () => _showBookingHistory(context),
-            ),
-            _buildMenuItem(
-              icon: Icons.favorite,
-              title: 'Dịch vụ yêu thích',
-              onTap: () {},
-            ),
-            _buildMenuItem(
-              icon: Icons.wallet,
-              title: 'Ví điểm thưởng',
-              onTap: () => _showPointsWallet(context),
-            ),
-            _buildMenuItem(
-              icon: Icons.location_on,
-              title: 'Địa chỉ cửa hàng',
-              onTap: () => _showStoreLocations(context),
-            ),
-            _buildMenuItem(
-              icon: Icons.support_agent,
-              title: 'Hỗ trợ khách hàng',
-              onTap: () {},
-            ),
-            _buildMenuItem(
-              icon: Icons.settings,
-              title: 'Cài đặt',
-              onTap: () {},
-            ),
-            _buildMenuItem(
-              icon: Icons.logout,
-              title: 'Đăng xuất',
-              onTap: () => _logout(context),
-              isLogout: true,
+
+            // Menu items container
+            Expanded(
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: AppColors.secondaryWhite,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(24),
+                    topRight: Radius.circular(24),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      _buildMenuItem(
+                        icon: Icons.person,
+                        title: 'Thông tin tài khoản',
+                        onTap: () {},
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.location_on,
+                        title: 'Địa chỉ của anh',
+                        onTap: () => _showStoreLocations(context),
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.shopping_bag,
+                        title: 'Đơn hàng',
+                        onTap: () {},
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.local_offer,
+                        title: 'Ưu đãi',
+                        onTap: () {},
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.history,
+                        title: 'Lịch sử cắt',
+                        onTap: () => _showBookingHistory(context),
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.favorite,
+                        title: 'Sở thích phục vụ',
+                        onTap: () {},
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.help,
+                        title: 'Hiệu để phục vụ anh tốt hơn',
+                        onTap: () {},
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.security,
+                        title: 'Lấy OTP xác thực giao dịch',
+                        onTap: () {},
+                      ),
+                      _buildMenuItem(
+                        icon: Icons.language,
+                        title: 'Hệ thống salon của 30Shine',
+                        onTap: () => _showStoreLocations(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ],
         ),
@@ -101,26 +129,27 @@ class ProfileScreen extends StatelessWidget {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
-    bool isLogout = false,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 4),
       child: ListTile(
-        leading: Icon(
-          icon,
-          color: isLogout ? Colors.red : AppColors.primaryOrange,
-        ),
+        leading: Icon(icon, color: AppColors.primaryDarkBlue, size: 22),
         title: Text(
           title,
-          style: TextStyle(
-            color: isLogout ? Colors.red : Colors.black,
-            fontWeight: FontWeight.w500,
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
           ),
         ),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        trailing: const Icon(
+          Icons.arrow_forward_ios,
+          size: 16,
+          color: AppColors.secondaryGrey,
+        ),
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        tileColor: AppColors.secondaryWhite,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
       ),
     );
   }
@@ -129,6 +158,7 @@ class ProfileScreen extends StatelessWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder:
           (context) => DraggableScrollableSheet(
             initialChildSize: 0.8,
@@ -136,9 +166,25 @@ class ProfileScreen extends StatelessWidget {
             minChildSize: 0.5,
             builder:
                 (context, scrollController) => Container(
+                  decoration: const BoxDecoration(
+                    color: AppColors.secondaryWhite,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.secondaryGrey,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       const Text(
                         'Lịch sử đặt hẹn',
                         style: TextStyle(
@@ -154,6 +200,7 @@ class ProfileScreen extends StatelessWidget {
                           itemBuilder: (context, index) {
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
+                              elevation: 2,
                               child: ListTile(
                                 leading: const CircleAvatar(
                                   backgroundColor: AppColors.primaryOrange,
@@ -182,45 +229,11 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  void _showPointsWallet(BuildContext context) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Ví điểm thưởng'),
-            content: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.wallet, size: 64, color: AppColors.primaryOrange),
-                SizedBox(height: 16),
-                Text(
-                  '1,250 điểm',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primaryOrange,
-                  ),
-                ),
-                SizedBox(height: 8),
-                Text(
-                  'Bạn có thể sử dụng điểm để đổi quà hoặc giảm giá dịch vụ',
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Đóng'),
-              ),
-            ],
-          ),
-    );
-  }
-
   void _showStoreLocations(BuildContext context) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder:
           (context) => DraggableScrollableSheet(
             initialChildSize: 0.7,
@@ -228,9 +241,25 @@ class ProfileScreen extends StatelessWidget {
             minChildSize: 0.5,
             builder:
                 (context, scrollController) => Container(
+                  decoration: const BoxDecoration(
+                    color: AppColors.secondaryWhite,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.secondaryGrey,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       const Text(
                         'Địa chỉ cửa hàng',
                         style: TextStyle(
@@ -269,6 +298,7 @@ class ProfileScreen extends StatelessWidget {
                             final store = stores[index];
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
+                              elevation: 2,
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
@@ -329,33 +359,6 @@ class ProfileScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-          ),
-    );
-  }
-
-  void _logout(BuildContext context) {
-    showDialog(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Đăng xuất'),
-            content: const Text('Bạn có chắc chắn muốn đăng xuất?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Hủy'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.pushReplacementNamed(context, '/login');
-                },
-                child: const Text(
-                  'Đăng xuất',
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
-            ],
           ),
     );
   }

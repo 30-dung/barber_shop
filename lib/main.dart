@@ -17,6 +17,7 @@ class ThirtyShineApp extends StatelessWidget {
       theme: appTheme,
       home: const SplashScreen(),
       routes: appRoutes,
+      debugShowCheckedModeBanner: false,
     );
   }
 }
