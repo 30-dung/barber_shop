@@ -14,14 +14,14 @@ class RegisterRequest {
   final String email;
   final String password;
   final String phoneNumber;
-  final String membershipType; // 'BASIC' as default in your code
+  final String membershipType; // 'REGULAR' as default in your code
 
   RegisterRequest({
     required this.fullName,
     required this.email,
     required this.password,
     required this.phoneNumber,
-    this.membershipType = 'BASIC', // Default value
+    this.membershipType = 'REGULAR', // Default value
   });
 
   Map<String, dynamic> toJson() {
