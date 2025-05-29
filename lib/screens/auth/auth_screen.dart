@@ -1,3 +1,4 @@
+import 'package:barber_app/screens/profile/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:barber_app/controller/auth_controller.dart';
@@ -33,6 +34,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   bool _obscureConfirmPassword = true;
   bool _obscureNewPassword = true;
 
+  bool _pendingNavigateToProfile = false; // Thêm biến này
+
   @override
   void initState() {
     super.initState();
@@ -58,7 +61,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
       create: (_) => AuthController(),
       child: Consumer<AuthController>(
         builder: (context, controller, _) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
             if (controller.errorMessage != null) {
               _showCustomSnackBar(
                 context,
@@ -73,6 +76,20 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 controller.successMessage!,
                 isError: false,
               );
+
+              // Nếu là đăng nhập thành công, delay rồi chuyển trang
+              if (_authMode == AuthMode.login && !_pendingNavigateToProfile) {
+                _pendingNavigateToProfile = true;
+                await Future.delayed(const Duration(seconds: 1));
+                controller.clearMessages();
+                if (mounted) {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(builder: (_) => ProfileScreen()),
+                  );
+                }
+                return;
+              }
+
               controller.clearMessages();
 
               // Navigate to reset password after successful forgot password
@@ -235,7 +252,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
           ),
           validator: (value) {
             if (value == null || value.isEmpty || value.length < 6) {
-              return 'Mật khẩu phải có ít nhất 6 ký tự';
+              return 'Mật khẩu phải có ít 1 chữ hóa 1 chữ thường ít nhất 8 ký tự';
             }
             return null;
           },
@@ -252,6 +269,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 password: _passwordController.text,
               ),
             );
+            // KHÔNG chuyển trang ở đây nữa!
           },
         ),
         const SizedBox(height: 24),
@@ -666,6 +684,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
       _authMode = newMode;
       _formKey.currentState?.reset();
       _clearControllers();
+      _pendingNavigateToProfile = false;
     });
   }
 

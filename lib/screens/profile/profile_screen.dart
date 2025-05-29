@@ -1,140 +1,197 @@
 import 'package:barber_app/screens/auth/auth_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:barber_app/utils/colors.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  Map<String, dynamic>? userData;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchUserInfo();
+  }
+
+  Future<void> fetchUserInfo() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) {
+      setState(() {
+        isLoading = false;
+      });
+      return;
+    }
+
+    final response = await http.get(
+      Uri.parse(
+        'http://192.168.1.32:9090/api/user/profile',
+      ), // Đổi endpoint phù hợp backend của bạn
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode == 200) {
+      setState(() {
+        userData = json.decode(response.body);
+        isLoading = false;
+      });
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primaryDarkBlue,
       body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            // Header với avatar
-            Container(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const CircleAvatar(
-                    radius: 30,
-                    backgroundColor: AppColors.secondaryWhite,
-                    child: Icon(
-                      Icons.person,
-                      size: 35,
-                      color: AppColors.primaryDarkBlue,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'Chưa có hàng thành viên',
-                    style: TextStyle(
-                      color: AppColors.secondaryWhite,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AuthScreen(),
-                        ),
-                      );
-                    },
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Text(
-                          'Đăng ký ngay',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            decoration: TextDecoration.underline,
-                          ),
-                        ),
-                        SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          color: Colors.white70,
-                          size: 14,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Menu items container
-            Container(
-              decoration: const BoxDecoration(
-                color: AppColors.secondaryWhite,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(24),
-                  topRight: Radius.circular(24),
-                ),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
+        child:
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView(
+                  padding: EdgeInsets.zero,
                   children: [
-                    const SizedBox(height: 8),
-                    _buildMenuItem(
-                      icon: Icons.person,
-                      title: 'Thông tin tài khoản',
-                      onTap: () {},
+                    // Header với avatar và thông tin user
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          const CircleAvatar(
+                            radius: 30,
+                            backgroundColor: AppColors.secondaryWhite,
+                            child: Icon(
+                              Icons.person,
+                              size: 35,
+                              color: AppColors.primaryDarkBlue,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            userData?['fullName'] ?? 'Không có tên',
+                            style: const TextStyle(
+                              color: AppColors.secondaryWhite,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            userData?['email'] ?? '',
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (userData == null)
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const AuthScreen(),
+                                  ),
+                                );
+                              },
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: const [
+                                  Text(
+                                    'Đăng ký ngay',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                  SizedBox(width: 4),
+                                  Icon(
+                                    Icons.arrow_forward_ios,
+                                    color: Colors.white70,
+                                    size: 14,
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
-                    _buildMenuItem(
-                      icon: Icons.location_on,
-                      title: 'Địa chỉ của anh',
-                      onTap: () => _showStoreLocations(context),
-                    ),
-                    _buildMenuItem(
-                      icon: Icons.shopping_bag,
-                      title: 'Đơn hàng',
-                      onTap: () {},
-                    ),
-                    _buildMenuItem(
-                      icon: Icons.local_offer,
-                      title: 'Ưu đãi',
-                      onTap: () {},
-                    ),
-                    _buildMenuItem(
-                      icon: Icons.history,
-                      title: 'Lịch sử cắt',
-                      onTap: () => _showBookingHistory(context),
-                    ),
-                    _buildMenuItem(
-                      icon: Icons.favorite,
-                      title: 'Sở thích phục vụ',
-                      onTap: () {},
-                    ),
-                    _buildMenuItem(
-                      icon: Icons.help,
-                      title: 'Hiệu để phục vụ anh tốt hơn',
-                      onTap: () {},
-                    ),
-                    _buildMenuItem(
-                      icon: Icons.security,
-                      title: 'Lấy OTP xác thực giao dịch',
-                      onTap: () {},
-                    ),
-                    _buildMenuItem(
-                      icon: Icons.language,
-                      title: 'Hệ thống salon của 30Shine',
-                      onTap: () => _showStoreLocations(context),
+                    // Menu items container
+                    Container(
+                      decoration: const BoxDecoration(
+                        color: AppColors.secondaryWhite,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(24),
+                          topRight: Radius.circular(24),
+                        ),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 8),
+                            _buildMenuItem(
+                              icon: Icons.person,
+                              title: 'Thông tin tài khoản',
+                              onTap: () {},
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.location_on,
+                              title: 'Địa chỉ của anh',
+                              onTap: () => _showStoreLocations(context),
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.shopping_bag,
+                              title: 'Đơn hàng',
+                              onTap: () {},
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.local_offer,
+                              title: 'Ưu đãi',
+                              onTap: () {},
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.history,
+                              title: 'Lịch sử cắt',
+                              onTap: () => _showBookingHistory(context),
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.favorite,
+                              title: 'Sở thích phục vụ',
+                              onTap: () {},
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.help,
+                              title: 'Hiệu để phục vụ anh tốt hơn',
+                              onTap: () {},
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.security,
+                              title: 'Lấy OTP xác thực giao dịch',
+                              onTap: () {},
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.language,
+                              title: 'Hệ thống salon của 30Shine',
+                              onTap: () => _showStoreLocations(context),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
