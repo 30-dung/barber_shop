@@ -13,7 +13,6 @@ class AuthController with ChangeNotifier {
   String? _userToken;
   String? _userRole;
 
-  // Getters
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get successMessage => _successMessage;
@@ -55,6 +54,7 @@ class AuthController with ChangeNotifier {
       }
       _userToken = token;
       _userRole = role;
+      notifyListeners();
     } catch (e) {
       debugPrint('Error saving token: $e');
     }
@@ -78,19 +78,20 @@ class AuthController with ChangeNotifier {
       await prefs.remove('user_role');
       _userToken = null;
       _userRole = null;
+      notifyListeners();
     } catch (e) {
       debugPrint('Error clearing token: $e');
     }
   }
 
-  // Login
   Future<void> login(LoginRequest request) async {
     _setLoading(true);
     try {
       final response = await _authService.login(request);
+      print('Login response: ${response.message}');
       if (response.token != null && response.token!.isNotEmpty) {
         await _saveToken(response.token!, response.role);
-        _setSuccess(response.message ?? 'Đăng nhập thành công!');
+        _setSuccess('Đăng nhập thành công!');
       } else {
         _setError(
           response.message ??
@@ -106,16 +107,14 @@ class AuthController with ChangeNotifier {
     }
   }
 
-  // Register
   Future<void> register(RegisterRequest request) async {
     _setLoading(true);
     try {
       final response = await _authService.register(request);
+      print('Register response: ${response.message}');
       if ((response.token != null && response.token!.isNotEmpty) ||
           (response.message?.toLowerCase().contains('thành công') == true)) {
-        _setSuccess(
-          response.message ?? 'Đăng ký thành công! Vui lòng đăng nhập.',
-        );
+        _setSuccess('Đăng ký thành công! Vui lòng đăng nhập.');
       } else {
         _setError(response.message ?? 'Đăng ký thất bại.');
       }
@@ -132,31 +131,26 @@ class AuthController with ChangeNotifier {
     _setLoading(true);
     try {
       final response = await _authService.forgotPassword(request);
-      // Nếu response là AuthResponse, xử lý như cũ
+      print('Forgot password response: ${response.message}');
       if (response.message != null &&
           (response.message!.toLowerCase().contains('otp') ||
               response.message!.toLowerCase().contains('đã được gửi') ||
               response.message!.toLowerCase().contains('sent to your email'))) {
-        _setSuccess(
-          response.message ?? 'Mã OTP đã được gửi đến email của bạn.',
-        );
+        _setSuccess('Mã OTP đã được gửi đến email của bạn.');
       } else {
         _setError(
           response.message ?? 'Không thể gửi OTP. Vui lòng kiểm tra email.',
         );
       }
     } catch (e) {
-      // Bắt lỗi FormatException khi server trả về text thường
       if (e is FormatException) {
         final msg =
             e.source?.toString().toLowerCase() ?? e.message.toLowerCase();
+        print('FormatException in forgotPassword: $msg');
         if (msg.contains('otp sent') ||
             msg.contains('otp has been sent') ||
             msg.contains('otp được gửi')) {
-          _setSuccess(
-            e.source?.toString() ??
-                'Mã OTP đã được gửi hãy kiểm tra email của bạn.',
-          );
+          _setSuccess('Mã OTP đã được gửi hãy kiểm tra email của bạn.');
         } else {
           _setError('Lỗi định dạng dữ liệu từ server: ${e.message}');
         }
@@ -168,29 +162,37 @@ class AuthController with ChangeNotifier {
     }
   }
 
-  // Reset Password
   Future<void> resetPassword(ResetPasswordRequest request) async {
     _setLoading(true);
     try {
       final response = await _authService.resetPassword(request);
+      print('Reset password response: ${response.message}');
       if (response.message?.toLowerCase().contains('thành công') == true) {
-        _setSuccess(
-          response.message ??
-              'Đặt lại mật khẩu thành công! Vui lòng đăng nhập.',
-        );
+        _setSuccess('Đặt lại mật khẩu thành công! Vui lòng đăng nhập.');
       } else {
         _setError(response.message ?? 'Đặt lại mật khẩu thất bại.');
       }
     } catch (e) {
-      if (e.toString().contains('SocketException')) {
+      print('Exception in resetPassword: $e');
+      if (e is FormatException) {
+        final msg =
+            e.source?.toString().toLowerCase() ?? e.message.toLowerCase();
+        if (msg.contains('invalid otp')) {
+          _setError('Mã OTP không hợp lệ. Vui lòng thử lại.');
+        } else {
+          _setError('Lỗi định dạng dữ liệu từ server: ${e.message}');
+        }
+      } else if (e.toString().contains('SocketException')) {
         _setError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.');
       } else {
-        _setError('Lỗi kết nối: $e');
+        _setError('Lỗi xử lý yêu cầu: $e');
       }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 
-  // Logout
   Future<void> logout() async {
     await _clearToken();
     notifyListeners();

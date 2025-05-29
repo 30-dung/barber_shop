@@ -1,5 +1,4 @@
 import 'package:barber_app/screens/home/home_screen.dart';
-import 'package:barber_app/screens/profile/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:barber_app/controller/auth_controller.dart';
@@ -35,7 +34,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   bool _obscureConfirmPassword = true;
   bool _obscureNewPassword = true;
 
-  bool _pendingNavigateToProfile = false; // Thêm biến này
+  bool _pendingNavigateToProfile = false;
+  bool _pendingNavigateToResetPassword = false;
 
   @override
   void initState() {
@@ -62,44 +62,93 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
       create: (_) => AuthController(),
       child: Consumer<AuthController>(
         builder: (context, controller, _) {
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
             if (controller.errorMessage != null) {
+              print('Error message: ${controller.errorMessage}');
               _showCustomSnackBar(
                 context,
                 controller.errorMessage!,
                 isError: true,
               );
               controller.clearMessages();
-            }
-            if (controller.successMessage != null) {
+            } else if (controller.successMessage != null) {
+              final String currentSuccessMessage = controller.successMessage!;
+              print('Success message: $currentSuccessMessage');
               _showCustomSnackBar(
                 context,
-                controller.successMessage!,
+                currentSuccessMessage,
                 isError: false,
               );
 
-              // Nếu là đăng nhập thành công, delay rồi chuyển trang
-              if (_authMode == AuthMode.login && !_pendingNavigateToProfile) {
+              // Case 1: Đăng nhập thành công
+              if (_authMode == AuthMode.login &&
+                  controller.isLoggedIn &&
+                  !_pendingNavigateToProfile) {
+                print('Login successful, navigating to HomeScreen');
                 _pendingNavigateToProfile = true;
-                await Future.delayed(const Duration(seconds: 1));
-                controller.clearMessages();
                 if (mounted) {
                   Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => HomeScreen()),
+                    MaterialPageRoute(builder: (_) => const HomeScreen()),
+                  );
+                } else {
+                  print('Widget not mounted, cannot navigate to HomeScreen');
+                }
+                controller.clearMessages();
+                return;
+              }
+              // Case 2: Gửi OTP thành công (Quên mật khẩu)
+              else if (_authMode == AuthMode.forgotPassword &&
+                  (currentSuccessMessage.toLowerCase().contains('otp') ||
+                      currentSuccessMessage.toLowerCase().contains(
+                        'đã được gửi',
+                      )) &&
+                  !_pendingNavigateToResetPassword) {
+                print(
+                  'Forgot password successful, switching to reset password form',
+                );
+                _pendingNavigateToResetPassword = true;
+                if (mounted) {
+                  setState(() {
+                    _authMode = AuthMode.resetPassword;
+                  });
+                } else {
+                  print(
+                    'Widget not mounted, cannot switch to reset password form',
                   );
                 }
+                controller.clearMessages();
+                return;
+              }
+              // Case 3: Đặt lại mật khẩu thành công
+              else if (_authMode == AuthMode.resetPassword &&
+                  currentSuccessMessage.toLowerCase().contains(
+                    'đặt lại mật khẩu thành công',
+                  )) {
+                print('Reset password successful, switching to login form');
+                if (mounted) {
+                  _switchMode(AuthMode.login);
+                } else {
+                  print('Widget not mounted, cannot switch to login form');
+                }
+                controller.clearMessages();
+                return;
+              }
+              // Case 4: Đăng ký thành công
+              else if (_authMode == AuthMode.register &&
+                  currentSuccessMessage.toLowerCase().contains(
+                    'đăng ký thành công',
+                  )) {
+                print('Register successful, switching to login form');
+                if (mounted) {
+                  _switchMode(AuthMode.login);
+                } else {
+                  print('Widget not mounted, cannot switch to login form');
+                }
+                controller.clearMessages();
                 return;
               }
 
               controller.clearMessages();
-
-              // Navigate to reset password after successful forgot password
-              if (_authMode == AuthMode.forgotPassword &&
-                  controller.successMessage!.contains('OTP')) {
-                setState(() {
-                  _authMode = AuthMode.resetPassword;
-                });
-              }
             }
           });
 
@@ -209,6 +258,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildCurrentForm(AuthController controller) {
+    print('Rendering form for authMode: $_authMode');
     switch (_authMode) {
       case AuthMode.login:
         return _buildLoginForm(controller);
@@ -253,7 +303,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
           ),
           validator: (value) {
             if (value == null || value.isEmpty || value.length < 6) {
-              return 'Mật khẩu phải có ít 1 chữ hóa 1 chữ thường ít nhất 8 ký tự';
+              return 'Mật khẩu phải có ít nhất 6 ký tự';
             }
             return null;
           },
@@ -270,7 +320,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 password: _passwordController.text,
               ),
             );
-            // KHÔNG chuyển trang ở đây nữa!
           },
         ),
         const SizedBox(height: 24),
@@ -352,8 +401,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
             ),
           ),
           validator: (value) {
-            if (value == null || value.isEmpty || value.length < 6) {
-              return 'Mật khẩu phải có ít nhất 6 ký tự';
+            if (value == null || value.isEmpty || value.length < 8) {
+              return 'Mật khẩu phải có ít nhất 8 ký tự';
             }
             return null;
           },
@@ -681,11 +730,13 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   }
 
   void _switchMode(AuthMode newMode) {
+    print('Switching to mode: $newMode');
     setState(() {
       _authMode = newMode;
       _formKey.currentState?.reset();
       _clearControllers();
       _pendingNavigateToProfile = false;
+      _pendingNavigateToResetPassword = false;
     });
   }
 
