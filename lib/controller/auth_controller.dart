@@ -128,12 +128,15 @@ class AuthController with ChangeNotifier {
     }
   }
 
-  // Forgot Password
   Future<void> forgotPassword(ForgotPasswordRequest request) async {
     _setLoading(true);
     try {
       final response = await _authService.forgotPassword(request);
-      if (response.message?.contains('OTP') == true) {
+      // Nếu response là AuthResponse, xử lý như cũ
+      if (response.message != null &&
+          (response.message!.toLowerCase().contains('otp') ||
+              response.message!.toLowerCase().contains('đã được gửi') ||
+              response.message!.toLowerCase().contains('sent to your email'))) {
         _setSuccess(
           response.message ?? 'Mã OTP đã được gửi đến email của bạn.',
         );
@@ -143,10 +146,24 @@ class AuthController with ChangeNotifier {
         );
       }
     } catch (e) {
-      if (e.toString().contains('SocketException')) {
+      // Bắt lỗi FormatException khi server trả về text thường
+      if (e is FormatException) {
+        final msg =
+            e.source?.toString().toLowerCase() ?? e.message.toLowerCase();
+        if (msg.contains('otp sent') ||
+            msg.contains('otp has been sent') ||
+            msg.contains('otp được gửi')) {
+          _setSuccess(
+            e.source?.toString() ??
+                'Mã OTP đã được gửi hãy kiểm tra email của bạn.',
+          );
+        } else {
+          _setError('Lỗi định dạng dữ liệu từ server: ${e.message}');
+        }
+      } else if (e.toString().contains('SocketException')) {
         _setError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.');
       } else {
-        _setError('Lỗi kết nối: $e');
+        _setError('Lỗi xử lý yêu cầu: $e');
       }
     }
   }

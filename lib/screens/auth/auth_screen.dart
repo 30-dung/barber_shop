@@ -1,3 +1,4 @@
+import 'package:barber_app/screens/home/home_screen.dart';
 import 'package:barber_app/screens/profile/profile_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -84,7 +85,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 controller.clearMessages();
                 if (mounted) {
                   Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => ProfileScreen()),
+                    MaterialPageRoute(builder: (_) => HomeScreen()),
                   );
                 }
                 return;
