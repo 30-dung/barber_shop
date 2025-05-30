@@ -1,7 +1,10 @@
+// services/api_service.dart
 import 'dart:convert';
+import 'package:barber_app/models/appointment.dart';
 import 'package:barber_app/models/salon.dart';
 import 'package:http/http.dart' as http;
 import 'package:barber_app/utils/constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/service.dart';
 
 class ApiService {
@@ -34,7 +37,6 @@ class ApiService {
   }
 
   Future<List<Salon>> getSalons() async {
-    // Giả lập gọi API
     await Future.delayed(const Duration(seconds: 1));
     return [
       Salon(
@@ -65,7 +67,6 @@ class ApiService {
   }
 
   Future<List<Service>> getServices() async {
-    // Giả lập gọi API
     await Future.delayed(const Duration(seconds: 1));
     return [
       Service(
@@ -102,5 +103,44 @@ class ApiService {
         imageUrl: 'https://via.placeholder.com/150/FFFF33/000000?text=NhuomToc',
       ),
     ];
+  }
+
+  Future<List<Appointment>> getAppointments() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+
+      if (token == null) {
+        throw Exception('Không tìm thấy token xác thực');
+      }
+
+      final response = await http.get(
+        Uri.parse('${AppConstants.baseUrl}/api/appointments'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        print('API Response: $responseData'); // Debug dữ liệu trả về
+
+        // Vì API trả về danh sách trực tiếp
+        if (responseData is List) {
+          return responseData
+              .map((json) => Appointment.fromJson(json))
+              .toList();
+        } else {
+          throw Exception(
+            'Dữ liệu không đúng định dạng: Không tìm thấy danh sách',
+          );
+        }
+      } else {
+        throw Exception('Yêu cầu thất bại với mã: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Lỗi khi lấy lịch sử đặt hẹn: $e');
+    }
   }
 }

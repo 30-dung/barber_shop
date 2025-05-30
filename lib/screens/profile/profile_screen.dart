@@ -1,4 +1,6 @@
+import 'package:barber_app/models/appointment.dart';
 import 'package:barber_app/screens/auth/auth_screen.dart';
+import 'package:barber_app/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:barber_app/utils/colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -557,55 +559,125 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppColors.secondaryGrey,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Lịch sử đặt hẹn',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: ListView.builder(
-                          controller: scrollController,
-                          itemCount: 5,
-                          itemBuilder: (context, index) {
-                            return Card(
-                              margin: const EdgeInsets.only(bottom: 12),
-                              elevation: 2,
-                              child: ListTile(
-                                leading: const CircleAvatar(
-                                  backgroundColor: AppColors.primaryOrange,
-                                  child: Icon(
-                                    Icons.content_cut,
-                                    color: AppColors.secondaryWhite,
+                  child: FutureBuilder<List<Appointment>>(
+                    future: ApiService().getAppointments(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primaryOrange,
+                          ),
+                        );
+                      } else if (snapshot.hasError) {
+                        return Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.error_outline,
+                                size: 64,
+                                color: Colors.red,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Lỗi: ${snapshot.error}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.black87,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 20),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.primaryDarkBlue,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
-                                title: Text(
-                                  'Cắt tóc nam - ${15 + index}/12/2024',
-                                ),
-                                subtitle: const Text('9:00 AM - Hoàn thành'),
-                                trailing: const Icon(
-                                  Icons.check_circle,
-                                  color: AppColors.accentGreen,
+                                child: const Text(
+                                  'Đóng',
+                                  style: TextStyle(color: Colors.white),
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                            ],
+                          ),
+                        );
+                      } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(
+                          child: Text(
+                            'Không có lịch sử đặt hẹn',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        );
+                      }
+
+                      final appointments = snapshot.data!;
+                      return Column(
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: AppColors.secondaryGrey,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Lịch sử đặt hẹn',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Expanded(
+                            child: ListView.builder(
+                              controller: scrollController,
+                              itemCount: appointments.length,
+                              itemBuilder: (context, index) {
+                                final appointment = appointments[index];
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 12),
+                                  elevation: 2,
+                                  child: ListTile(
+                                    leading: const CircleAvatar(
+                                      backgroundColor: AppColors.primaryOrange,
+                                      child: Icon(
+                                        Icons.content_cut,
+                                        color: AppColors.secondaryWhite,
+                                      ),
+                                    ),
+                                    title: Text(
+                                      '${appointment.serviceName} - ${appointment.date}',
+                                    ),
+                                    subtitle: Text(
+                                      '${appointment.time} - ${appointment.status}',
+                                    ),
+                                    trailing: Icon(
+                                      appointment.status == 'Hoàn thành'
+                                          ? Icons.check_circle
+                                          : Icons.pending,
+                                      color:
+                                          appointment.status == 'Hoàn thành'
+                                              ? AppColors.accentGreen
+                                              : AppColors.secondaryGrey,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
           ),

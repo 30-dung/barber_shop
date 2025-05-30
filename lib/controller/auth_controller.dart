@@ -143,13 +143,15 @@ class AuthController with ChangeNotifier {
         );
       }
     } catch (e) {
+      print('Exception in forgotPassword: $e');
       if (e is FormatException) {
         final msg =
             e.source?.toString().toLowerCase() ?? e.message.toLowerCase();
         print('FormatException in forgotPassword: $msg');
         if (msg.contains('otp sent') ||
             msg.contains('otp has been sent') ||
-            msg.contains('otp được gửi')) {
+            msg.contains('otp được gửi') ||
+            msg.contains('sent to your email')) {
           _setSuccess('Mã OTP đã được gửi hãy kiểm tra email của bạn.');
         } else {
           _setError('Lỗi định dạng dữ liệu từ server: ${e.message}');
@@ -159,6 +161,8 @@ class AuthController with ChangeNotifier {
       } else {
         _setError('Lỗi xử lý yêu cầu: $e');
       }
+    } finally {
+      _setLoading(false);
     }
   }
 
