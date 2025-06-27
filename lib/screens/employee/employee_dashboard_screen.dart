@@ -1,6 +1,9 @@
 // lib/screens/employee/employee_dashboard_screen.dart
 import 'package:flutter/material.dart';
 
+import '../../services/storage_service.dart';
+import '../auth/login_screen.dart';
+
 class EmployeeDashboardScreen extends StatefulWidget {
   const EmployeeDashboardScreen({Key? key}) : super(key: key);
 
@@ -17,6 +20,15 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
         backgroundColor: Colors.blue[700],
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Đăng xuất',
+            onPressed: () {
+              _logout(context);
+            },
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
@@ -26,7 +38,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
             colors: [Colors.blue[700]!, Colors.blue[50]!],
           ),
         ),
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -112,7 +124,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _buildStatCard(
-                      'Tuần này',
+                      'Thàng này',
                       '45',
                       'Cuộc hẹn',
                       Icons.calendar_view_week,
@@ -124,39 +136,53 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
 
               const SizedBox(height: 20),
 
-              // Menu Grid
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 15,
-                  mainAxisSpacing: 15,
-                  children: [
-                    _buildMenuCard(
-                      'Cuộc hẹn của tôi',
-                      Icons.calendar_today,
-                      Colors.blue,
-                          () => Navigator.pushNamed(context, '/employee/appointments'),
-                    ),
-                    _buildMenuCard(
-                      'Lương của tôi',
-                      Icons.attach_money,
-                      Colors.green,
-                          () => Navigator.pushNamed(context, '/employee/salary'),
-                    ),
-                    _buildMenuCard(
-                      'Thống kê cá nhân',
-                      Icons.bar_chart,
-                      Colors.purple,
-                          () => Navigator.pushNamed(context, '/employee/statistics'),
-                    ),
-                    _buildMenuCard(
-                      'Đăng ký ca làm',
-                      Icons.schedule,
-                      Colors.orange,
-                          () => Navigator.pushNamed(context, '/employee/schedule'),
-                    ),
-                  ],
+              // Menu List
+              const Text(
+                'Chức năng',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
+              ),
+              const SizedBox(height: 12),
+              Column(
+                children: [
+                  _buildMenuCard(
+                    'Cuộc hẹn của tôi',
+                    Icons.calendar_today,
+                    Colors.blue,
+                        () => Navigator.pushNamed(context, '/employee/appointments'),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMenuCard(
+                    'Lương của tôi',
+                    Icons.attach_money,
+                    Colors.green,
+                        () => Navigator.pushNamed(context, '/employee/salary'),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMenuCard(
+                    'Thống kê cá nhân',
+                    Icons.bar_chart,
+                    Colors.purple,
+                        () => Navigator.pushNamed(context, '/employee/statistics'),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMenuCard(
+                    'Đăng ký ca làm',
+                    Icons.schedule,
+                    Colors.orange,
+                        () => Navigator.pushNamed(context, '/employee/schedule'),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildMenuCard(
+                    'Đăng xuất',
+                    Icons.logout,
+                    Colors.red,
+                        () => _logout(context),
+                  ),
+                ],
               ),
             ],
           ),
@@ -223,8 +249,7 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
               ],
             ),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(15),
@@ -238,19 +263,52 @@ class _EmployeeDashboardScreenState extends State<EmployeeDashboardScreen> {
                   color: color,
                 ),
               ),
-              const SizedBox(height: 15),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
+              const SizedBox(width: 15),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[800],
+                  ),
                 ),
+              ),
+              Icon(
+                Icons.arrow_forward_ios,
+                size: 20,
+                color: Colors.grey[600],
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+  Future<void> _logout(BuildContext context) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đăng xuất'),
+        content: const Text('Bạn có chắc chắn muốn đăng xuất?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await StorageService.clearStorage();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                      (route) => false,
+                );
+              }
+            },
+            child: const Text('Đăng xuất'),
+          ),
+        ],
       ),
     );
   }
