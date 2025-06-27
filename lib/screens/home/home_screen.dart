@@ -182,7 +182,7 @@ class HomeTab extends StatelessWidget {
                       style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                     ),
                     const Text(
-                      'Hôm nay bạn muốn làm gì?',
+                      'Hôm nay bạn muốn cắt kiểu tóc gì?',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,

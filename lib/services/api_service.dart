@@ -44,16 +44,16 @@ class ApiService {
   // --- Authentication Endpoints ---
 
   static Future<Map<String, dynamic>> login(
-    String email,
-    String password,
-  ) async {
+      String email,
+      String password,
+      ) async {
     try {
       final response = await http
           .post(
-            Uri.parse('$baseUrl/api/auth/login'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': email, 'password': password}),
-          )
+        Uri.parse('$baseUrl/api/auth/login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
@@ -79,15 +79,15 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> register(
-    Map<String, dynamic> userData,
-  ) async {
+      Map<String, dynamic> userData,
+      ) async {
     try {
       final response = await http
           .post(
-            Uri.parse('$baseUrl/api/auth/register'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(userData),
-          )
+        Uri.parse('$baseUrl/api/auth/register'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(userData),
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
@@ -116,10 +116,10 @@ class ApiService {
     try {
       final response = await http
           .post(
-            Uri.parse('$baseUrl/api/auth/forgot-password'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'email': email}),
-          )
+        Uri.parse('$baseUrl/api/auth/forgot-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email}),
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
@@ -149,10 +149,10 @@ class ApiService {
     try {
       final response = await http
           .post(
-            Uri.parse('$baseUrl/api/auth/reset-password'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'token': token, 'newPassword': newPassword}),
-          )
+        Uri.parse('$baseUrl/api/auth/reset-password'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'token': token, 'newPassword': newPassword}),
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
@@ -181,9 +181,9 @@ class ApiService {
     try {
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/services'),
-            headers: await _getAuthHeaders(),
-          )
+        Uri.parse('$baseUrl/api/services'),
+        headers: await _getAuthHeaders(),
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
@@ -213,9 +213,9 @@ class ApiService {
     try {
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/services/store/$storeId'),
-            headers: await _getAuthHeaders(),
-          )
+        Uri.parse('$baseUrl/api/services/store/$storeId'),
+        headers: await _getAuthHeaders(),
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
@@ -292,9 +292,9 @@ class ApiService {
     try {
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/store/cities'),
-            headers: await _getAuthHeaders(),
-          )
+        Uri.parse('$baseUrl/api/store/cities'),
+        headers: await _getAuthHeaders(),
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
@@ -327,9 +327,9 @@ class ApiService {
     try {
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/store/districts?cityProvince=$city'),
-            headers: await _getAuthHeaders(),
-          )
+        Uri.parse('$baseUrl/api/store/districts?cityProvince=$city'),
+        headers: await _getAuthHeaders(),
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
@@ -463,10 +463,10 @@ class ApiService {
 
       final response = await http
           .post(
-            Uri.parse('${AppConstants.baseUrl}/api/appointments'),
-            headers: await _getAuthHeaders(),
-            body: jsonEncode([appointmentData]),
-          )
+        Uri.parse('${AppConstants.baseUrl}/api/appointments'),
+        headers: await _getAuthHeaders(),
+        body: jsonEncode([appointmentData]),
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
@@ -513,18 +513,24 @@ class ApiService {
 
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/appointments/user/current'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          )
+        Uri.parse('$baseUrl/api/appointments/user/current'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
 
       log('getUserBookings response status: ${response.statusCode}');
       log('getUserBookings response body: ${response.body}');
+
+      // Handle 404 specifically for no bookings found
+      if (response.statusCode == 404) {
+        log('No bookings found (404), returning empty list.');
+        return []; // Return an empty list if no bookings are found
+      }
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = json.decode(
@@ -555,9 +561,9 @@ class ApiService {
     try {
       final response = await http
           .get(
-            Uri.parse('${AppConstants.baseUrl}/api/user/profile'),
-            headers: await _getAuthHeaders(),
-          )
+        Uri.parse('${AppConstants.baseUrl}/api/user/profile'),
+        headers: await _getAuthHeaders(),
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
@@ -582,6 +588,93 @@ class ApiService {
     }
   }
 
+  // --- NEW: Update User Profile (Changed to PUT) ---
+  static Future<User> updateProfile(String token, String fullName, String phoneNumber) async {
+    try {
+      final response = await http
+          .put( // Changed from PATCH to PUT
+        Uri.parse('${AppConstants.baseUrl}/api/user/update-profile'),
+        headers: await _getAuthHeaders(),
+        body: jsonEncode({
+          'fullName': fullName,
+          'phoneNumber': phoneNumber,
+        }),
+      )
+          .timeout(_timeout);
+
+      await _handleAuthError(response);
+
+      log('Update profile response status: ${response.statusCode}');
+      log('Update profile response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        // Assuming the backend returns the updated user object
+        return User.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+      } else {
+        String errorMessage = 'Failed to update profile: ${response.statusCode}';
+        try {
+          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          log('Error parsing error response for updateProfile: $e');
+        }
+        log('Error updating profile: $errorMessage');
+        throw Exception(errorMessage);
+      }
+    } on TimeoutException {
+      throw Exception(
+        'Request timed out. Please check your internet connection.',
+      );
+    } catch (e) {
+      log('Network error updating profile: $e');
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // --- NEW: Change User Password (Changed to PUT) ---
+  static Future<void> changePasswordActual(String token, String currentPassword, String newPassword, String confirmPassword) async {
+    try {
+      final response = await http
+          .put( // Changed from PATCH to PUT
+        Uri.parse('${AppConstants.baseUrl}/api/user/update-profile'), // Using the same endpoint as per user's info
+        headers: await _getAuthHeaders(),
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+          'confirmPassword': confirmPassword,
+        }),
+      )
+          .timeout(_timeout);
+
+      await _handleAuthError(response);
+
+      log('Change password response status: ${response.statusCode}');
+      log('Change password response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        log('Password changed successfully.');
+      } else {
+        String errorMessage = 'Failed to change password: ${response.statusCode}';
+        try {
+          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {
+          log('Error parsing error response for changePassword: $e');
+        }
+        log('Error changing password: $errorMessage');
+        throw Exception(errorMessage);
+      }
+    } on TimeoutException {
+      throw Exception(
+        'Request timed out. Please check your internet connection.',
+      );
+    } catch (e) {
+      log('Network error changing password: $e');
+      throw Exception('Network error: $e');
+    }
+  }
+
+
   static Future<void> cancelAppointment(int appointmentId) async {
     final token = await StorageService.getToken();
     if (token == null) {
@@ -591,9 +684,9 @@ class ApiService {
     try {
       final response = await http
           .patch(
-            Uri.parse('$baseUrl/api/appointments/$appointmentId/cancel'),
-            headers: await _getAuthHeaders(),
-          )
+        Uri.parse('$baseUrl/api/appointments/$appointmentId/cancel'),
+        headers: await _getAuthHeaders(),
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
@@ -634,12 +727,12 @@ class ApiService {
 
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/invoices'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          )
+        Uri.parse('$baseUrl/api/invoices'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);
@@ -681,9 +774,9 @@ class ApiService {
 
       final response = await http
           .get(
-            Uri.parse('$baseUrl/api/payment/create/$invoiceId'),
-            headers: await _getAuthHeaders(),
-          )
+        Uri.parse('$baseUrl/api/payment/create/$invoiceId'),
+        headers: await _getAuthHeaders(),
+      )
           .timeout(_timeout);
 
       await _handleAuthError(response);

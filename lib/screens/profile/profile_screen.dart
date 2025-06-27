@@ -4,6 +4,8 @@ import '../../services/api_service.dart';
 import '../../services/storage_service.dart';
 import '../../models/user_model.dart';
 import '../auth/login_screen.dart';
+import 'edit_profile_screen.dart'; // Import the new edit screen
+import 'change_password_screen.dart'; // Import the new change password screen
 
 // --- Best Practice: Define colors and styles as constants for easy reuse and theming ---
 const Color kPrimaryColor = Color(0xFFFF6B35);
@@ -33,6 +35,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final token = await StorageService.getToken();
     if (token == null) {
       if (mounted) setState(() => _isLoading = false);
+      // If no token, maybe navigate to login or show a login prompt
+      // For now, just set isLoading to false and _user will be null
       return;
     }
     try {
@@ -58,10 +62,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
-        (route) => false,
+            (route) => false,
       );
     }
   }
+
+  // --- NEW: Function to navigate to EditProfileScreen and handle result ---
+  Future<void> _navigateToEditProfile() async {
+    if (_user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể chỉnh sửa hồ sơ. Dữ liệu người dùng không có sẵn.')),
+      );
+      return;
+    }
+
+    final updatedUser = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EditProfileScreen(currentUser: _user!),
+      ),
+    );
+
+    // If updatedUser is returned (i.e., user saved changes), update the state
+    if (updatedUser != null && updatedUser is User) {
+      setState(() {
+        _user = updatedUser;
+      });
+      // You could also call _loadUser() here to re-fetch from API for full refresh
+    }
+  }
+
+  // --- NEW: Function to navigate to ChangePasswordScreen ---
+  void _navigateToChangePassword() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const ChangePasswordScreen(),
+      ),
+    );
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -97,7 +135,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildInfoTile(
                 Icons.phone_outlined,
                 'Số điện thoại',
-                _user!.phoneNumber,
+                _user!.phoneNumber.isNotEmpty ? _user!.phoneNumber : 'Chưa có', // Handle empty phone number
               ),
               _buildInfoTile(Icons.email_outlined, 'Email', _user!.email),
             ]),
@@ -126,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildProfileHeader() {
     // Get the first letter of the user's name for the avatar fallback
     final String initial =
-        _user!.fullName.isNotEmpty ? _user!.fullName[0].toUpperCase() : 'A';
+    _user!.fullName.isNotEmpty ? _user!.fullName[0].toUpperCase() : 'A';
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
@@ -233,22 +271,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildActionTile(
             icon: Icons.edit_outlined,
             text: 'Chỉnh sửa hồ sơ',
-            onTap: () {
-              // TODO: Navigate to Edit Profile Screen
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Chức năng đang được phát triển!'),
-                ),
-              );
-            },
+            onTap: _navigateToEditProfile, // Calling the navigation function
           ),
           const Divider(height: 1),
           _buildActionTile(
             icon: Icons.lock_outline,
             text: 'Đổi mật khẩu',
-            onTap: () {
-              // TODO: Navigate to Change Password Screen
-            },
+            onTap: _navigateToChangePassword, // Calling the navigation function
           ),
           const Divider(height: 1),
           _buildActionTile(
