@@ -1,102 +1,111 @@
-// lib/models/user_model.dart
+import 'dart:convert';
+
+// Define UserRole enum for distinct user types
+enum UserRole {
+  customer,
+  employee,
+  admin,
+}
+
 class User {
   final int? userId; // User ID, nullable for flexibility
-  final String fullName;
-  final String email;
-  final String phoneNumber;
-  final String?
-  password; // Made nullable for security reasons (not to store in SharedPreferences)
+  String fullName;
+  String email;
+  String phoneNumber;
+  final String? password; // Made nullable for security reasons (not to store in SharedPreferences)
+  final UserRole role; // Added role property
   final String membershipType;
   final int? loyaltyPoints; // Loyalty points, nullable
   final String? createdAt; // Creation timestamp, nullable
-  final String?
-  avatar; // Optional: If you have an avatar URL in the user profile
+  // final String? avatar; // Optional: If you have an avatar URL in the user profile - REMOVED
 
   User({
     this.userId,
     required this.fullName,
     required this.email,
     required this.phoneNumber,
-    this.password, // This is now optional in the constructor
+    this.password,
+    required this.role, // Added to constructor
     required this.membershipType,
     this.loyaltyPoints,
     this.createdAt,
-    this.avatar,
+    // this.avatar, // REMOVED
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
-    // Print the incoming JSON for debugging purposes. Remove in production.
     print('User.fromJson received JSON for parsing: $json');
 
     try {
+      // Safely parse role, defaulting to customer if not found or invalid
+      UserRole parsedRole;
+      try {
+        String? roleStringFromBackend = json['role'] as String?;
+        String cleanRoleString = 'customer'; // Default if null or unhandled
+
+        if (roleStringFromBackend != null) {
+          // Remove "ROLE_" prefix if present and convert to lowercase
+          if (roleStringFromBackend.startsWith('ROLE_')) {
+            cleanRoleString = roleStringFromBackend.substring(5).toLowerCase();
+          } else {
+            cleanRoleString = roleStringFromBackend.toLowerCase();
+          }
+        }
+
+        parsedRole = UserRole.values.firstWhere(
+              (e) => e.toString().split('.').last == cleanRoleString,
+          orElse: () => UserRole.customer,
+        );
+      } catch (e) {
+        print('Warning: Failed to parse user role from JSON: $e. Defaulting to customer.');
+        parsedRole = UserRole.customer;
+      }
+
+
       return User(
-        // Safely parse userId, trying multiple common keys
         userId:
-            json['userId'] as int? ??
-            json['id'] as int? ??
-            json['user_id'] as int?,
-
-        // Safely parse fullName, trying multiple common keys
+        json['userId'] as int? ?? json['id'] as int? ?? json['user_id'] as int?,
         fullName:
-            json['fullName'] as String? ??
-            json['full_name'] as String? ??
-            json['name'] as String? ??
-            '',
-
-        email: json['email'] as String? ?? '', // Safely parse email
+        json['fullName'] as String? ?? json['full_name'] as String? ?? json['name'] as String? ?? '',
+        email: json['email'] as String? ?? '',
         phoneNumber:
-            json['phoneNumber'] as String? ?? '', // Safely parse phone number
-        // Password is often not returned by login/profile APIs. Handle as nullable.
+        json['phoneNumber'] as String? ?? '',
         password:
-            json['password']
-                as String?, // Keep as nullable string. Do NOT require.
-
+        json['password'] as String?,
+        role: parsedRole, // Assign the parsed role
         membershipType:
-            json['membershipType'] as String? ??
-            '', // Safely parse membershipType
-        // Safely parse loyaltyPoints (can be int or num from JSON)
+        json['membershipType'] as String? ?? 'Standard', // Default if missing
         loyaltyPoints:
-            (json['loyaltyPoints'] is num)
-                ? (json['loyaltyPoints'] as num).toInt()
-                : null, // Default to null if not a number
-
-        createdAt: json['createdAt'] as String?, // Safely parse createdAt
-        // Safely parse avatar URL, trying common keys
-        avatar: json['avatarUrl'] as String? ?? json['avatar'] as String?,
+        (json['loyaltyPoints'] is num)
+            ? (json['loyaltyPoints'] as num).toInt()
+            : 0, // Default to 0 if not a number
+        createdAt: json['createdAt'] as String?,
+        // avatar: json['avatarUrl'] as String? ?? json['avatar'] as String?, // REMOVED
       );
     } catch (e) {
-      // Log errors during parsing to the console
       print('❌ Lỗi parse User từ JSON: $e');
       print('JSON data that caused error: $json');
-      // Re-throw the exception to propagate it up the call stack for error handling in UI/logic
       rethrow;
     }
   }
 
-  // *** THIS IS THE MISSING toJson() METHOD ***
-  // Converts User object to a JSON-compatible Map.
-  // Sensitive data like 'password' should generally be omitted here for storage in SharedPreferences.
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = {
       'userId': userId,
       'fullName': fullName,
       'email': email,
       'phoneNumber': phoneNumber,
+      'role': role.toString().split('.').last, // Convert enum to string
       'membershipType': membershipType,
       'loyaltyPoints': loyaltyPoints,
       'createdAt': createdAt,
-      'avatar': avatar,
+      // 'avatar': avatar, // REMOVED
     };
-    // Only include password if it's specifically needed for an outgoing request (e.g., registration)
-    // and is not null. It should NOT be stored in shared preferences.
-    // if (password != null) {
-    //   data['password'] = password;
-    // }
     return data;
   }
 
   @override
   String toString() {
-    return 'User(userId: $userId, email: $email, fullName: $fullName, phoneNumber: $phoneNumber, membershipType: $membershipType, loyaltyPoints: $loyaltyPoints, createdAt: $createdAt, avatar: $avatar)';
+    return 'User(userId: $userId, fullName: $fullName, email: $email, phoneNumber: $phoneNumber, role: ${role.toString().split('.').last}, membershipType: $membershipType, loyaltyPoints: $loyaltyPoints, createdAt: $createdAt)';
+    // Removed avatar from toString()
   }
 }
