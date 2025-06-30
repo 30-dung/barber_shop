@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../services/api_service.dart';
+import 'package:shine_booking_app/services/api_user.dart';
+// import '../../services/api_service.dart'; // REMOVE this import
 import '../../services/storage_service.dart';
 
 // Reuse color constants for consistency
@@ -16,9 +17,11 @@ class ChangePasswordScreen extends StatefulWidget {
 
 class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _currentPasswordController = TextEditingController();
+  final TextEditingController _currentPasswordController =
+      TextEditingController();
   final TextEditingController _newPasswordController = TextEditingController();
-  final TextEditingController _confirmNewPasswordController = TextEditingController();
+  final TextEditingController _confirmNewPasswordController =
+      TextEditingController();
 
   bool _isLoading = false;
   bool _obscureCurrentPassword = true;
@@ -46,7 +49,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (token == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không tìm thấy token. Vui lòng đăng nhập lại.')),
+          const SnackBar(
+            content: Text('Không tìm thấy token. Vui lòng đăng nhập lại.'),
+          ),
         );
         setState(() => _isLoading = false);
       }
@@ -54,11 +59,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     }
 
     try {
-      await ApiService.changePasswordActual(
-        token,
-        _currentPasswordController.text,
-        _newPasswordController.text,
-        _confirmNewPasswordController.text,
+      // Call the NEW API service method from ApiUserService
+      await ApiUserService.changeMyPassword(
+        // Changed from ApiService.changePasswordActual
+        currentPassword: _currentPasswordController.text,
+        newPassword: _newPasswordController.text,
+        confirmPassword: _confirmNewPasswordController.text,
       );
 
       if (mounted) {
@@ -75,9 +81,9 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi đổi mật khẩu: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi đổi mật khẩu: $e')));
       }
     } finally {
       if (mounted) {
@@ -97,99 +103,105 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: kPrimaryColor,
-        iconTheme: const IconThemeData(color: Colors.white), // For back button color
+        iconTheme: const IconThemeData(
+          color: Colors.white,
+        ), // For back button color
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
-          : Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              _buildPasswordField(
-                controller: _currentPasswordController,
-                labelText: 'Mật khẩu hiện tại',
-                obscureText: _obscureCurrentPassword,
-                toggleObscureText: () {
-                  setState(() {
-                    _obscureCurrentPassword = !_obscureCurrentPassword;
-                  });
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Vui lòng nhập mật khẩu hiện tại';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildPasswordField(
-                controller: _newPasswordController,
-                labelText: 'Mật khẩu mới',
-                obscureText: _obscureNewPassword,
-                toggleObscureText: () {
-                  setState(() {
-                    _obscureNewPassword = !_obscureNewPassword;
-                  });
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Vui lòng nhập mật khẩu mới';
-                  }
-                  if (value.length < 6) {
-                    return 'Mật khẩu phải có ít nhất 6 ký tự';
-                  }
-                  if (value == _currentPasswordController.text) {
-                    return 'Mật khẩu mới không được trùng với mật khẩu hiện tại';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              _buildPasswordField(
-                controller: _confirmNewPasswordController,
-                labelText: 'Xác nhận mật khẩu mới',
-                obscureText: _obscureConfirmNewPassword,
-                toggleObscureText: () {
-                  setState(() {
-                    _obscureConfirmNewPassword = !_obscureConfirmNewPassword;
-                  });
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Vui lòng xác nhận mật khẩu mới';
-                  }
-                  if (value != _newPasswordController.text) {
-                    return 'Mật khẩu xác nhận không khớp';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _changePassword,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimaryColor,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+      body:
+          _isLoading
+              ? const Center(
+                child: CircularProgressIndicator(color: kPrimaryColor),
+              )
+              : Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    children: [
+                      _buildPasswordField(
+                        controller: _currentPasswordController,
+                        labelText: 'Mật khẩu hiện tại',
+                        obscureText: _obscureCurrentPassword,
+                        toggleObscureText: () {
+                          setState(() {
+                            _obscureCurrentPassword = !_obscureCurrentPassword;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Vui lòng nhập mật khẩu hiện tại';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildPasswordField(
+                        controller: _newPasswordController,
+                        labelText: 'Mật khẩu mới',
+                        obscureText: _obscureNewPassword,
+                        toggleObscureText: () {
+                          setState(() {
+                            _obscureNewPassword = !_obscureNewPassword;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Vui lòng nhập mật khẩu mới';
+                          }
+                          if (value.length < 6) {
+                            return 'Mật khẩu phải có ít nhất 6 ký tự';
+                          }
+                          if (value == _currentPasswordController.text) {
+                            return 'Mật khẩu mới không được trùng với mật khẩu hiện tại';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _buildPasswordField(
+                        controller: _confirmNewPasswordController,
+                        labelText: 'Xác nhận mật khẩu mới',
+                        obscureText: _obscureConfirmNewPassword,
+                        toggleObscureText: () {
+                          setState(() {
+                            _obscureConfirmNewPassword =
+                                !_obscureConfirmNewPassword;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Vui lòng xác nhận mật khẩu mới';
+                          }
+                          if (value != _newPasswordController.text) {
+                            return 'Mật khẩu xác nhận không khớp';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 32),
+                      ElevatedButton(
+                        onPressed: _changePassword,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kPrimaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 4,
+                        ),
+                        child: const Text(
+                          'Đổi mật khẩu',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  elevation: 4,
-                ),
-                child: const Text(
-                  'Đổi mật khẩu',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 

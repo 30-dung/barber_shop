@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:intl/date_symbol_data_local.dart'; // Import this
 import 'screens/splash_screen.dart';
 
-void main() {
+void main() async {
+  // Change main to async
+  WidgetsFlutterBinding.ensureInitialized(); // Ensure Flutter binding is initialized
+  // Khởi tạo dữ liệu định dạng ngày tháng cho locale 'vi_VN'
+  await initializeDateFormatting('vi_VN', null); // Initialize locale data
+
   runApp(const ShineBookingApp());
 }
 

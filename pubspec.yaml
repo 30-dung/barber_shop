@@ -6,20 +6,28 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-    
-  provider: ^6.0.0 # Thêm dòng này
-  webview_flutter: ^4.7.0 # Sử dụng phiên bản mới nhất
+
+  provider: ^6.0.0
+  webview_flutter: ^4.7.0
 
   http: ^1.1.0
   shared_preferences: ^2.2.2
   intl: ^0.18.1
-  image_picker: ^1.0.4  
+  image_picker: ^1.0.4
   cached_network_image: ^3.3.0
+  json_annotation: ^4.9.0 # Added for model serialization/deserialization
+  decimal: ^2.3.3
+  table_calendar: ^3.0.9
+  flutter_rating_bar: ^4.0.1
+  # You might want to add a proper BigDecimal package here if strict precision is needed
+  # e.g., decimal: ^2.3.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  build_runner: ^2.4.6 # Added for code generation
+  json_serializable: ^6.7.1 # Added for code generation
 
 flutter:
   uses-material-design: true

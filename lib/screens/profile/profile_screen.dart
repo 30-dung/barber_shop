@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Needed for SystemUiOverlayStyle
-import '../../services/api_service.dart';
+import 'package:shine_booking_app/services/api_user.dart';
+// import '../../services/api_service.dart'; // REMOVED: No longer needed for user profile specific calls
 import '../../services/storage_service.dart';
 import '../../models/user_model.dart';
 import '../auth/login_screen.dart';
-import 'edit_profile_screen.dart'; // Import the new edit screen
-import 'change_password_screen.dart'; // Import the new change password screen
+import 'edit_profile_screen.dart';
+import 'change_password_screen.dart';
 
 // --- Best Practice: Define colors and styles as constants for easy reuse and theming ---
 const Color kPrimaryColor = Color(0xFFFF6B35);
@@ -32,15 +33,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadUser() async {
-    final token = await StorageService.getToken();
-    if (token == null) {
-      if (mounted) setState(() => _isLoading = false);
-      // If no token, maybe navigate to login or show a login prompt
-      // For now, just set isLoading to false and _user will be null
-      return;
-    }
     try {
-      final user = await ApiService.getProfile(token);
+      // Use ApiUserService.getMyProfile() instead of ApiService.getProfile()
+      final user = await ApiUserService.getMyProfile();
       if (mounted) {
         setState(() {
           _user = user;
@@ -53,6 +48,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Không thể tải thông tin cá nhân: $e')),
         );
+        // Optionally, if loading profile fails due to auth, navigate to login
+        if (e.toString().contains('Tài khoản mật khẩu không chính xác') ||
+            e.toString().contains('No authentication token found')) {
+          _logout();
+        }
       }
     }
   }
@@ -62,16 +62,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const LoginScreen()),
-            (route) => false,
+        (route) => false,
       );
     }
   }
 
-  // --- NEW: Function to navigate to EditProfileScreen and handle result ---
   Future<void> _navigateToEditProfile() async {
     if (_user == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể chỉnh sửa hồ sơ. Dữ liệu người dùng không có sẵn.')),
+        const SnackBar(
+          content: Text(
+            'Không thể chỉnh sửa hồ sơ. Dữ liệu người dùng không có sẵn.',
+          ),
+        ),
       );
       return;
     }
@@ -82,24 +85,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
 
-    // If updatedUser is returned (i.e., user saved changes), update the state
     if (updatedUser != null && updatedUser is User) {
       setState(() {
         _user = updatedUser;
       });
-      // You could also call _loadUser() here to re-fetch from API for full refresh
+      // After updating, save the new user data to storage to reflect changes immediately
+      await StorageService.saveUser(updatedUser);
     }
   }
 
-  // --- NEW: Function to navigate to ChangePasswordScreen ---
   void _navigateToChangePassword() {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const ChangePasswordScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +115,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
-    // This makes the status bar icons (wifi, battery) light, which looks better on a dark app bar
     final systemUiOverlayStyle = SystemUiOverlayStyle.light.copyWith(
       statusBarColor: Colors.transparent,
     );
@@ -126,8 +124,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Scaffold(
         backgroundColor: Colors.grey[50],
         body: ListView(
-          // Using ListView is better for scrollable content with various sections
-          padding: EdgeInsets.zero, // Remove default padding
+          padding: EdgeInsets.zero,
           children: [
             _buildProfileHeader(),
             const SizedBox(height: 20),
@@ -135,21 +132,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildInfoTile(
                 Icons.phone_outlined,
                 'Số điện thoại',
-                _user!.phoneNumber.isNotEmpty ? _user!.phoneNumber : 'Chưa có', // Handle empty phone number
+                _user!.phoneNumber?.isNotEmpty ==
+                        true // FIX: Null-check phoneNumber
+                    ? _user!.phoneNumber!
+                    : 'Chưa có',
               ),
-              _buildInfoTile(Icons.email_outlined, 'Email', _user!.email),
+              _buildInfoTile(
+                Icons.email_outlined,
+                'Email',
+                _user!.email ?? 'N/A',
+              ), // FIX: Handle nullable email
             ]),
             const SizedBox(height: 16),
             _buildInfoCard('Thông tin thành viên', [
               _buildInfoTile(
                 Icons.star_outline,
                 'Điểm tích lũy',
-                _user!.loyaltyPoints.toString(),
+                _user!.loyaltyPoints?.toString() ??
+                    '0', // FIX: Handle nullable loyaltyPoints
               ),
               _buildInfoTile(
                 Icons.card_membership_outlined,
                 'Hạng thành viên',
-                _user!.membershipType,
+                _user!.membershipType ??
+                    'Thường', // FIX: Handle nullable membershipType
               ),
             ]),
             const SizedBox(height: 24),
@@ -160,11 +166,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Widget for the top header section (Avatar, Name, etc.)
   Widget _buildProfileHeader() {
-    // Get the first letter of the user's name for the avatar fallback
     final String initial =
-    _user!.fullName.isNotEmpty ? _user!.fullName[0].toUpperCase() : 'A';
+        _user!.fullName?.isNotEmpty == true
+            ? _user!.fullName![0].toUpperCase()
+            : 'A'; // FIX: Null-check fullName
 
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 60, 24, 30),
@@ -180,8 +186,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: CircleAvatar(
               radius: 48,
               backgroundColor: kPrimaryLightColor,
-              // If you have a user avatar URL, you can use it here.
-              // backgroundImage: NetworkImage(_user!.avatarUrl),
               child: Text(
                 initial,
                 style: const TextStyle(
@@ -194,7 +198,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            _user!.fullName,
+            _user!.fullName ?? 'Người dùng', // FIX: Handle nullable fullName
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -203,7 +207,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            _user!.email,
+            _user!.email ?? 'N/A', // FIX: Handle nullable email
             style: TextStyle(
               fontSize: 16,
               color: Colors.white.withOpacity(0.85),
@@ -214,7 +218,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // A reusable card for sections like "Contact Info", "Membership Info"
   Widget _buildInfoCard(String title, List<Widget> children) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -237,7 +240,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 8),
               const Divider(),
-              ...children, // Use the spread operator to add the list of tiles
+              ...children,
             ],
           ),
         ),
@@ -245,7 +248,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // Replaces the old _profileRow with a more standard ListTile
   Widget _buildInfoTile(IconData icon, String label, String value) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -262,7 +264,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // A section for action buttons
   Widget _buildActions() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -271,13 +272,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _buildActionTile(
             icon: Icons.edit_outlined,
             text: 'Chỉnh sửa hồ sơ',
-            onTap: _navigateToEditProfile, // Calling the navigation function
+            onTap: _navigateToEditProfile,
           ),
           const Divider(height: 1),
           _buildActionTile(
             icon: Icons.lock_outline,
             text: 'Đổi mật khẩu',
-            onTap: _navigateToChangePassword, // Calling the navigation function
+            onTap: _navigateToChangePassword,
           ),
           const Divider(height: 1),
           _buildActionTile(

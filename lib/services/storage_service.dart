@@ -25,7 +25,9 @@ class StorageService {
       final prefs = await SharedPreferences.getInstance();
       final userJson = jsonEncode(user.toJson());
       await prefs.setString(_keyUser, userJson);
-      print('✅ User đã lưu thành công: ${user.fullName} (ID: ${user.userId}, Role: ${user.role.toString().split('.').last})');
+      print(
+        '✅ User đã lưu thành công: ${user.fullName} (ID: ${user.userId}, Role: ${user.role.toString().split('.').last})',
+      );
     } catch (e) {
       print('❌ Lỗi lưu user: $e');
       print('User data: ${user.toString()}');
@@ -38,12 +40,31 @@ class StorageService {
       final prefs = await SharedPreferences.getInstance();
       final employeeJson = jsonEncode(employee.toJson());
       await prefs.setString(_keyEmployee, employeeJson);
-      print('✅ Employee đã lưu thành công: ${employee.fullName} (ID: ${employee.employeeId})');
+      print(
+        '✅ Employee đã lưu thành công: ${employee.fullName} (ID: ${employee.employeeId})',
+      );
     } catch (e) {
       print('❌ Lỗi lưu employee: $e');
       print('Employee data: ${employee.toString()}');
       throw e;
     }
+  }
+
+  // Thêm vào class StorageService
+  static Future<int?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    // Assuming 'user_id' is stored directly as an int or within the user object
+    final userJson = prefs.getString(_keyUser);
+    if (userJson != null && userJson.isNotEmpty) {
+      try {
+        final userData = jsonDecode(userJson);
+        return User.fromJson(userData).userId; // Get userId from User model
+      } catch (e) {
+        print('❌ Lỗi parse user data để lấy userId: $e');
+        return null;
+      }
+    }
+    return null;
   }
 
   static Future<User?> getUser() async {
@@ -54,7 +75,9 @@ class StorageService {
       if (userJson != null && userJson.isNotEmpty) {
         final userData = jsonDecode(userJson);
         final user = User.fromJson(userData);
-        print('✅ Lấy user thành công: ${user.fullName} (ID: ${user.userId}, Role: ${user.role.toString().split('.').last})');
+        print(
+          '✅ Lấy user thành công: ${user.fullName} (ID: ${user.userId}, Role: ${user.role.toString().split('.').last})',
+        );
         return user;
       } else {
         print('❌ Không tìm thấy user trong storage');
@@ -73,16 +96,26 @@ class StorageService {
 
       if (employeeJson != null && employeeJson.isNotEmpty) {
         final employeeData = jsonDecode(employeeJson);
-        final employee = Employee.fromJson(employeeData);
-        print('✅ Lấy employee thành công: ${employee.fullName} (ID: ${employee.employeeId})');
-        return employee;
+        if (employeeData is Map<String, dynamic>) {
+          final employee = Employee.fromJson(employeeData);
+          print(
+            '✅ Lấy employee thành công: ${employee.fullName} (ID: ${employee.employeeId})',
+          );
+          return employee;
+        } else {
+          print(
+            '❌ Employee data không phải Map<String, dynamic>: $employeeData',
+          );
+          return null;
+        }
       } else {
         print('❌ Không tìm thấy employee trong storage');
-        return null;
+        return StorageService.clearStorage().then((_) => null);
+        ;
       }
     } catch (e) {
       print('❌ Lỗi lấy employee: $e');
-      return null;
+      return StorageService.clearStorage().then((_) => null);
     }
   }
 
@@ -96,7 +129,7 @@ class StorageService {
         return token;
       } else {
         print('❌ Không tìm thấy token trong storage');
-        return null;
+        return StorageService.clearStorage().then((_) => null);
       }
     } catch (e) {
       print('❌ Lỗi lấy token: $e');
@@ -108,7 +141,8 @@ class StorageService {
     try {
       final prefs = await SharedPreferences.getInstance();
       final hasToken = prefs.containsKey(_keyToken);
-      final hasUser = prefs.containsKey(_keyUser) || prefs.containsKey(_keyEmployee);
+      final hasUser =
+          prefs.containsKey(_keyUser) || prefs.containsKey(_keyEmployee);
 
       print('Storage status - Token: $hasToken, User/Employee data: $hasUser');
       return hasToken && hasUser;
@@ -141,14 +175,15 @@ class StorageService {
             final user = User.fromJson(userData);
 
             // Kiểm tra role cụ thể từ User object
-            final roleString = user.role.toString().split('.').last.toLowerCase();
+            final roleString =
+                user.role.toString().split('.').last.toLowerCase();
 
             if (roleString == 'admin') {
               print('✅ Phát hiện role: ADMIN');
               return 'ADMIN';
             } else {
               print('✅ Phát hiện role: CUSTOMER');
-              return 'CUSTOMER';
+              return 'CUSTOMER'; // Đã thêm dòng này để đảm bảo có return
             }
           } catch (e) {
             print('❌ Lỗi parse user data, mặc định là CUSTOMER: $e');
@@ -166,7 +201,7 @@ class StorageService {
   }
 
   // NEW: Phương thức lấy UserRole enum
-  static Future<UserRole?> getCurrentUserRoleEnum() async {
+  static Future<Object?> getCurrentUserRoleEnum() async {
     try {
       final prefs = await SharedPreferences.getInstance();
 
@@ -176,7 +211,7 @@ class StorageService {
         if (employeeJson != null && employeeJson.isNotEmpty) {
           final employeeData = jsonDecode(employeeJson);
           final employee = Employee.fromJson(employeeData);
-          return employee.role;
+          return employee.roles;
         }
       }
 

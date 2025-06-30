@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../services/api_service.dart';
+import 'package:shine_booking_app/services/api_user.dart';
+// import '../../services/api_service.dart'; // REMOVE this import
 import '../../services/storage_service.dart';
 import '../../models/user_model.dart';
 
@@ -28,9 +29,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _fullNameController = TextEditingController(text: widget.currentUser.fullName);
+    _fullNameController = TextEditingController(
+      text: widget.currentUser.fullName,
+    );
     _emailController = TextEditingController(text: widget.currentUser.email);
-    _phoneNumberController = TextEditingController(text: widget.currentUser.phoneNumber);
+    _phoneNumberController = TextEditingController(
+      text: widget.currentUser.phoneNumber,
+    );
   }
 
   @override
@@ -54,7 +59,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (token == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không tìm thấy token. Vui lòng đăng nhập lại.')),
+          const SnackBar(
+            content: Text('Không tìm thấy token. Vui lòng đăng nhập lại.'),
+          ),
         );
         setState(() => _isLoading = false);
       }
@@ -62,12 +69,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
 
     try {
-      // Call the actual API service method
-      final updatedUser = await ApiService.updateProfile(
-        token,
-        _fullNameController.text,
-        _phoneNumberController.text,
+      // Call the NEW API service method from ApiUserService
+      final updatedUser = await ApiUserService.updateMyProfile(
+        // Changed from ApiService.updateProfile
+        {
+          'fullName': _fullNameController.text,
+          'phoneNumber': _phoneNumberController.text,
+        },
       );
+
+      // After successful update, save the updated user to local storage
+      await StorageService.saveUser(updatedUser);
 
       if (mounted) {
         // Pass the updated user back to the previous screen (ProfileScreen)
@@ -78,9 +90,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi cập nhật hồ sơ: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi cập nhật hồ sơ: $e')));
       }
     } finally {
       if (mounted) {
@@ -100,76 +112,81 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: kPrimaryColor,
-        iconTheme: const IconThemeData(color: Colors.white), // For back button color
+        iconTheme: const IconThemeData(
+          color: Colors.white,
+        ), // For back button color
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
-          : Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              _buildTextField(
-                controller: _fullNameController,
-                labelText: 'Họ và tên',
-                icon: Icons.person_outline,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Vui lòng nhập họ và tên';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              // Email field is for display only, cannot be edited here as per typical API design
-              _buildTextField(
-                controller: _emailController,
-                labelText: 'Email',
-                icon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-                enabled: false, // Make email field uneditable
-              ),
-              const SizedBox(height: 16),
-              _buildTextField(
-                controller: _phoneNumberController,
-                labelText: 'Số điện thoại',
-                icon: Icons.phone_outlined,
-                keyboardType: TextInputType.phone,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Vui lòng nhập số điện thoại';
-                  }
-                  if (!RegExp(r'^[0-9]{10,11}$').hasMatch(value)) {
-                    return 'Vui lòng nhập số điện thoại hợp lệ (10-11 số)';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _updateProfile,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimaryColor,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+      body:
+          _isLoading
+              ? const Center(
+                child: CircularProgressIndicator(color: kPrimaryColor),
+              )
+              : Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    children: [
+                      _buildTextField(
+                        controller: _fullNameController,
+                        labelText: 'Họ và tên',
+                        icon: Icons.person_outline,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Vui lòng nhập họ và tên';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      // Email field is for display only, cannot be edited here as per typical API design
+                      _buildTextField(
+                        controller: _emailController,
+                        labelText: 'Email',
+                        icon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                        enabled: false, // Make email field uneditable
+                      ),
+                      const SizedBox(height: 16),
+                      _buildTextField(
+                        controller: _phoneNumberController,
+                        labelText: 'Số điện thoại',
+                        icon: Icons.phone_outlined,
+                        keyboardType: TextInputType.phone,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Vui lòng nhập số điện thoại';
+                          }
+                          if (!RegExp(r'^[0-9]{10,11}$').hasMatch(value)) {
+                            return 'Vui lòng nhập số điện thoại hợp lệ (10-11 số)';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 32),
+                      ElevatedButton(
+                        onPressed: _updateProfile,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: kPrimaryColor,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 4,
+                        ),
+                        child: const Text(
+                          'Lưu thay đổi',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  elevation: 4,
-                ),
-                child: const Text(
-                  'Lưu thay đổi',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -204,7 +221,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         floatingLabelStyle: const TextStyle(color: kPrimaryColor),
       ),
       validator: validator,
-      style: TextStyle(color: enabled ? kTextColor : kSubTextColor.withOpacity(0.7)), // Adjust text color for disabled
+      style: TextStyle(
+        color: enabled ? kTextColor : kSubTextColor.withOpacity(0.7),
+      ), // Adjust text color for disabled
     );
   }
 }

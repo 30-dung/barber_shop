@@ -1,32 +1,28 @@
-// lib/models/working_time_slot_model.dart
+import 'package:json_annotation/json_annotation.dart';
+import 'package:shine_booking_app/models/employee_model.dart';
+import 'package:shine_booking_app/models/store_model.dart';
+
+part 'working_time_slot_model.g.dart';
+
+@JsonSerializable(explicitToJson: true)
 class WorkingTimeSlot {
-  final int timeSlotId;
-  final String startTime;
-  final String endTime;
-  final bool isAvailable;
+  int? timeSlotId;
+  Employee? employee;
+  Store? store;
+  DateTime? startTime;
+  DateTime? endTime;
+  bool? isAvailable;
 
   WorkingTimeSlot({
-    required this.timeSlotId,
-    required this.startTime,
-    required this.endTime,
-    this.isAvailable = true,
+    this.timeSlotId,
+    this.employee,
+    this.store,
+    this.startTime,
+    this.endTime,
+    this.isAvailable,
   });
 
-  factory WorkingTimeSlot.fromJson(Map<String, dynamic> json) {
-    return WorkingTimeSlot(
-      timeSlotId: json['timeSlotId'],
-      startTime: json['startTime'],
-      endTime: json['endTime'],
-      isAvailable: json['isAvailable'] ?? true,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'timeSlotId': timeSlotId,
-      'startTime': startTime,
-      'endTime': endTime,
-      'isAvailable': isAvailable,
-    };
-  }
+  factory WorkingTimeSlot.fromJson(Map<String, dynamic> json) =>
+      _$WorkingTimeSlotFromJson(json);
+  Map<String, dynamic> toJson() => _$WorkingTimeSlotToJson(this);
 }

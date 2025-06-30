@@ -1,22 +1,17 @@
-// lib/services/api_service.dart
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-import 'package:shine_booking_app/models/booking_model.dart';
-import 'package:shine_booking_app/models/employee_model.dart'; // Import Employee model
 import 'package:shine_booking_app/models/invoice_model.dart';
 import 'package:shine_booking_app/models/service_detail_model.dart';
 import 'package:shine_booking_app/models/store_model.dart';
-// import 'package:shine_booking_app/models/store_model.dart'; // Remove if Store model is now only in employee_model.dart
 import 'package:shine_booking_app/models/store_service_model.dart';
 import 'package:shine_booking_app/models/working_time_slot_model.dart';
 import 'package:shine_booking_app/services/storage_service.dart';
 import '../constants/app_constants.dart';
-import '../models/user_model.dart';
+// import '../models/user_model.dart'; // User model is primarily handled by ApiUserService/AuthService
 import '../models/location_count_model.dart';
-// ...existing code...
 
 class ApiService {
   static const Duration _timeout = Duration(
@@ -34,15 +29,12 @@ class ApiService {
     return headers;
   }
 
-  // Hàm tiện ích kiểm tra lỗi xác thực
   static Future<void> _handleAuthError(http.Response response) async {
     if (response.statusCode == 401 || response.statusCode == 403) {
       await StorageService.clearStorage();
-      throw Exception('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      throw Exception('Tài khoản mật khẩu không chính xác, Vui lòng thử lại!');
     }
   }
-
-  // --- Authentication Endpoints ---
 
   static Future<Map<String, dynamic>> login(
     String email,
@@ -62,20 +54,18 @@ class ApiService {
       if (response.statusCode == 200) {
         return jsonDecode(response.body);
       } else {
-        String errorMessage = 'Login failed';
+        String errorMessage = 'Đăng nhập thất bại';
         try {
           final errorBody = jsonDecode(response.body);
           errorMessage = errorBody['message'] ?? errorMessage;
-        } catch (e) {}
+        } catch (_) {}
         throw Exception(errorMessage);
       }
     } on TimeoutException {
-      throw Exception(
-        'Request timed out. Please check your internet connection.',
-      );
+      throw Exception('Yêu cầu hết thời gian. Vui lòng kiểm tra kết nối mạng.');
     } catch (e) {
-      log('Login network error: $e');
-      throw Exception('Network error: $e');
+      log('Lỗi đăng nhập: $e');
+      throw Exception(e.toString().replaceFirst('Exception:', '').trim());
     }
   }
 
@@ -176,8 +166,6 @@ class ApiService {
     }
   }
 
-  // --- Service Endpoints ---
-
   static Future<List<ServiceDetail>> getServices() async {
     try {
       final response = await http
@@ -239,15 +227,11 @@ class ApiService {
       throw Exception(
         'Request timed out. Please check your internet connection.',
       );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
+    } catch (e) {
       log('Get services by store ID network error: $e');
       throw Exception('Failed to load services for store $storeId: $e');
     }
   }
-
-  // --- Store Endpoints ---
 
   static Future<List<Store>> getStores({String? city, String? district}) async {
     final Map<String, String> queryParams = {};
@@ -285,9 +269,7 @@ class ApiService {
       throw Exception(
         'Request timed out. Please check your internet connection.',
       );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
+    } catch (e) {
       log('Get stores network error: $e');
       throw Exception('Network error: $e');
     }
@@ -322,9 +304,7 @@ class ApiService {
       throw Exception(
         'Request timed out. Please check your internet connection.',
       );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
+    } catch (e) {
       log('Get store cities network error: $e');
       throw Exception('Failed to load cities: $e');
     }
@@ -359,49 +339,9 @@ class ApiService {
       throw Exception(
         'Request timed out. Please check your internet connection.',
       );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
+    } catch (e) {
       log('Get store districts network error: $e');
       throw Exception('Failed to load districts: $e');
-    }
-  }
-
-  // --- Employee Endpoints ---
-
-  static Future<List<Employee>> getEmployees({required int storeId}) async {
-    final uri = Uri.parse('$baseUrl/api/employees/store/$storeId');
-
-    try {
-      final response = await http
-          .get(uri, headers: await _getAuthHeaders())
-          .timeout(_timeout);
-
-      await _handleAuthError(response);
-
-      if (response.statusCode == 200) {
-        Iterable list = json.decode(utf8.decode(response.bodyBytes));
-        return List<Employee>.from(
-          list.map((model) => Employee.fromJson(model)),
-        );
-      } else {
-        String errorMessage =
-            'Failed to load employees for store $storeId: ${response.statusCode}';
-        try {
-          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-          errorMessage = errorBody['message'] ?? errorMessage;
-        } catch (e) {}
-        throw Exception(errorMessage);
-      }
-    } on TimeoutException {
-      throw Exception(
-        'Request timed out. Please check your internet connection.',
-      );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
-      log('Get employees network error: $e');
-      throw Exception('Failed to load employees for store $storeId: $e');
     }
   }
 
@@ -443,352 +383,8 @@ class ApiService {
       throw Exception(
         'Request timed out. Please check your internet connection.',
       );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
+    } catch (e) {
       log('Get available time slots network error: $e');
-      throw Exception('Network error: $e');
-    }
-  }
-
-  static Future<Map<String, dynamic>> createAppointment({
-    required int timeSlotId,
-    required int storeServiceId,
-    required String startTime,
-    required String endTime,
-    String? notes,
-  }) async {
-    final token = await StorageService.getToken();
-    if (token == null) {
-      throw Exception('User not authenticated. Please log in.');
-    }
-
-    try {
-      final appointmentData = {
-        'timeSlotId': timeSlotId,
-        'storeServiceId': storeServiceId,
-        'startTime': startTime,
-        'endTime': endTime,
-        'notes': notes ?? '',
-      };
-
-      log('Creating appointment with data: $appointmentData');
-
-      final response = await http
-          .post(
-            Uri.parse('${AppConstants.baseUrl}/api/appointments'),
-            headers: await _getAuthHeaders(),
-            body: jsonEncode([appointmentData]),
-          )
-          .timeout(_timeout);
-
-      await _handleAuthError(response);
-
-      log('Create appointment response status: ${response.statusCode}');
-      log('Create appointment response body: ${response.body}');
-
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final responseData = jsonDecode(utf8.decode(response.bodyBytes));
-
-        if (responseData is List && responseData.isNotEmpty) {
-          return responseData[0] as Map<String, dynamic>;
-        } else {
-          return responseData as Map<String, dynamic>;
-        }
-      } else {
-        String errorMessage =
-            'Failed to create appointment: ${response.statusCode}';
-        try {
-          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-          errorMessage = errorBody['message'] ?? errorMessage;
-        } catch (e) {
-          log('Error parsing error response: $e');
-        }
-        log('Error creating appointment: $errorMessage');
-        throw Exception(errorMessage);
-      }
-    } on TimeoutException {
-      throw Exception(
-        'Request timed out. Please check your internet connection.',
-      );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
-      log('Network error creating appointment: $e');
-      throw Exception('Network error: $e');
-    }
-  }
-
-  static Future<List<Booking>> getUserBookings() async {
-    try {
-      final token = await StorageService.getToken();
-      if (token == null) {
-        throw Exception('No authentication token found');
-      }
-
-      final response = await http
-          .get(
-            Uri.parse('$baseUrl/api/appointments/user/current'),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-          )
-          .timeout(_timeout);
-
-      await _handleAuthError(response);
-
-      log('getUserBookings response status: ${response.statusCode}');
-      log('getUserBookings response body: ${response.body}');
-
-      // Handle 404 specifically for no bookings found
-      if (response.statusCode == 404) {
-        log('No bookings found (404), returning empty list.');
-        return []; // Return an empty list if no bookings are found
-      }
-
-      if (response.statusCode == 200) {
-        final List<dynamic> jsonList = json.decode(
-          utf8.decode(response.bodyBytes),
-        );
-        return jsonList.map((json) => Booking.fromJson(json)).toList();
-      } else {
-        String errorMessage = 'Failed to load bookings: ${response.statusCode}';
-        try {
-          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-          errorMessage = errorBody['message'] ?? errorMessage;
-        } catch (e) {
-          log('Error parsing error response for getUserBookings: $e');
-        }
-        throw Exception(errorMessage);
-      }
-    } on TimeoutException {
-      throw Exception(
-        'Request timed out. Please check your internet connection.',
-      );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
-      log('Error in getUserBookings: $e');
-      throw Exception('Failed to load your bookings: $e');
-    }
-  }
-
-  static Future<User> getProfile(String token) async {
-    try {
-      final response = await http
-          .get(
-            Uri.parse('${AppConstants.baseUrl}/api/user/profile'),
-            headers: await _getAuthHeaders(),
-          )
-          .timeout(_timeout);
-
-      await _handleAuthError(response);
-
-      if (response.statusCode == 200) {
-        return User.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
-      } else {
-        String errorMessage = 'Failed to load profile';
-        try {
-          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-          errorMessage = errorBody['message'] ?? errorMessage;
-        } catch (e) {}
-        throw Exception(errorMessage);
-      }
-    } on TimeoutException {
-      throw Exception(
-        'Request timed out. Please check your internet connection.',
-      );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
-      log('Get profile network error: $e');
-      throw Exception('Failed to load profile: $e');
-    }
-  }
-
-  // --- UPDATED: Get Employee Details from /api/employees/profile ---
-  static Future<Employee> getEmployeeDetails(String token) async {
-    try {
-      final response = await http
-          .get(
-            Uri.parse(
-              '${AppConstants.baseUrl}/api/employees/profile',
-            ), // Corrected endpoint
-            headers: await _getAuthHeaders(),
-          )
-          .timeout(_timeout);
-
-      await _handleAuthError(response);
-
-      if (response.statusCode == 200) {
-        return Employee.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
-      } else {
-        String errorMessage = 'Failed to load employee profile';
-        try {
-          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-          errorMessage = errorBody['message'] ?? errorMessage;
-        } catch (e) {}
-        throw Exception(errorMessage);
-      }
-    } on TimeoutException {
-      throw Exception(
-        'Request timed out. Please check your internet connection.',
-      );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
-      log('Get employee profile network error: $e');
-      throw Exception('Failed to load employee profile: $e');
-    }
-  }
-
-  // --- NEW: Update User Profile (Changed to PUT) ---
-  static Future<User> updateProfile(
-    String token,
-    String fullName,
-    String phoneNumber,
-  ) async {
-    try {
-      final response = await http
-          .put(
-            // Changed from PATCH to PUT
-            Uri.parse('${AppConstants.baseUrl}/api/user/update-profile'),
-            headers: await _getAuthHeaders(),
-            body: jsonEncode({
-              'fullName': fullName,
-              'phoneNumber': phoneNumber,
-            }),
-          )
-          .timeout(_timeout);
-
-      await _handleAuthError(response);
-
-      log('Update profile response status: ${response.statusCode}');
-      log('Update profile response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        // Assuming the backend returns the updated user object
-        return User.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
-      } else {
-        String errorMessage =
-            'Failed to update profile: ${response.statusCode}';
-        try {
-          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-          errorMessage = errorBody['message'] ?? errorMessage;
-        } catch (e) {
-          log('Error parsing error response for updateProfile: $e');
-        }
-        log('Error updating profile: $errorMessage');
-        throw Exception(errorMessage);
-      }
-    } on TimeoutException {
-      throw Exception(
-        'Request timed out. Please check your internet connection.',
-      );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
-      log('Network error updating profile: $e');
-      throw Exception('Network error: $e');
-    }
-  }
-
-  // --- NEW: Change User Password (Changed to PUT) ---
-  static Future<void> changePasswordActual(
-    String token,
-    String currentPassword,
-    String newPassword,
-    String confirmPassword,
-  ) async {
-    try {
-      final response = await http
-          .put(
-            // Changed from PATCH to PUT
-            Uri.parse(
-              '${AppConstants.baseUrl}/api/user/update-profile',
-            ), // Using the same endpoint as per user's info
-            headers: await _getAuthHeaders(),
-            body: jsonEncode({
-              'currentPassword': currentPassword,
-              'newPassword': newPassword,
-              'confirmPassword': confirmPassword,
-            }),
-          )
-          .timeout(_timeout);
-
-      await _handleAuthError(response);
-
-      log('Change password response status: ${response.statusCode}');
-      log('Change password response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        log('Password changed successfully.');
-      } else {
-        String errorMessage =
-            'Failed to change password: ${response.statusCode}';
-        try {
-          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-          errorMessage = errorBody['message'] ?? errorMessage;
-        } catch (e) {
-          log('Error parsing error response for changePassword: $e');
-        }
-        log('Error changing password: $errorMessage');
-        throw Exception(errorMessage);
-      }
-    } on TimeoutException {
-      throw Exception(
-        'Request timed out. Please check your internet connection.',
-      );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
-      log('Network error changing password: $e');
-      throw Exception('Network error: $e');
-    }
-  }
-
-  static Future<void> cancelAppointment(int appointmentId) async {
-    final token = await StorageService.getToken();
-    if (token == null) {
-      throw Exception('User not authenticated. Please log in.');
-    }
-
-    try {
-      final response = await http
-          .patch(
-            Uri.parse('$baseUrl/api/appointments/$appointmentId/cancel'),
-            headers: await _getAuthHeaders(),
-          )
-          .timeout(_timeout);
-
-      await _handleAuthError(response);
-
-      log('Cancel appointment response status: ${response.statusCode}');
-      log('Cancel appointment response body: ${response.body}');
-
-      if (response.statusCode == 200) {
-        log('Appointment $appointmentId cancelled successfully.');
-      } else {
-        String errorMessage =
-            'Failed to cancel appointment: ${response.statusCode}';
-        try {
-          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
-          errorMessage = errorBody['message'] ?? errorMessage;
-        } catch (e) {
-          log('Error parsing error response for cancel: $e');
-        }
-        log('Error cancelling appointment: $errorMessage');
-        throw Exception(errorMessage);
-      }
-    } on TimeoutException {
-      throw Exception(
-        'Request timed out. Please check your internet connection.',
-      );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
-      log('Network error cancelling appointment: $e');
       throw Exception('Network error: $e');
     }
   }
@@ -834,9 +430,7 @@ class ApiService {
       throw Exception(
         'Request timed out. Please check your internet connection.',
       );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
+    } catch (e) {
       log('Error in getUserInvoices: $e');
       throw Exception('Failed to load your bookings: $e');
     }
@@ -878,10 +472,42 @@ class ApiService {
       throw Exception(
         'Request timed out. Please check your internet connection.',
       );
-    }
-    // Corrected catch block for consistency
-    catch (e) {
+    } catch (e) {
       log('Network error getting VNPAY URL: $e');
+      throw Exception('Network error: $e');
+    }
+  }
+
+  // NEW: Get store by ID
+  static Future<Store> getStoreById(int storeId) async {
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/store/$storeId'),
+            headers: await _getAuthHeaders(),
+          )
+          .timeout(_timeout);
+
+      await _handleAuthError(response);
+
+      if (response.statusCode == 200) {
+        return Store.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+      } else {
+        String errorMessage =
+            'Failed to load store with ID $storeId: ${response.statusCode}';
+        try {
+          final errorBody = jsonDecode(utf8.decode(response.bodyBytes));
+          errorMessage = errorBody['message'] ?? errorMessage;
+        } catch (e) {}
+        log('Error in getStoreById: $errorMessage');
+        throw Exception(errorMessage);
+      }
+    } on TimeoutException {
+      throw Exception(
+        'Request timed out. Please check your internet connection.',
+      );
+    } catch (e) {
+      log('Get store by ID network error: $e');
       throw Exception('Network error: $e');
     }
   }

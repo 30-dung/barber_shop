@@ -1,3 +1,8 @@
+import 'package:json_annotation/json_annotation.dart';
+
+part 'service_detail_model.g.dart';
+
+@JsonSerializable()
 class ServiceDetail {
   final int serviceId;
   final String serviceName;
@@ -13,13 +18,7 @@ class ServiceDetail {
     this.serviceImg,
   });
 
-  factory ServiceDetail.fromJson(Map<String, dynamic> json) {
-    return ServiceDetail(
-      serviceId: json['serviceId'],
-      serviceName: json['serviceName'],
-      description: json['description'],
-      durationMinutes: json['durationMinutes'],
-      serviceImg: json['serviceImg'],
-    );
-  }
+  factory ServiceDetail.fromJson(Map<String, dynamic> json) =>
+      _$ServiceDetailFromJson(json);
+  Map<String, dynamic> toJson() => _$ServiceDetailToJson(this);
 }

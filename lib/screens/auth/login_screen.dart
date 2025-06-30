@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:shine_booking_app/screens/auth/forgot_password_screen.dart';
+import 'package:shine_booking_app/services/api_user.dart';
 import '../../services/api_service.dart';
+import '../../services/api_employee.dart';
 import '../../services/storage_service.dart';
-import '../../models/user_model.dart'; // Make sure User model is imported
-import '../../models/employee_model.dart'; // Import Employee model
+import '../../models/user_model.dart';
+import '../../models/employee_model.dart';
 import '../home/home_screen.dart';
 import 'register_screen.dart';
-import '../admin/admin_dashboard_screen.dart'; // Import AdminDashboardScreen
-import '../employee/employee_dashboard_screen.dart'; // Import EmployeeDashboardScreen
+import '../admin/admin_dashboard_screen.dart';
+import '../employee/employee_dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -34,105 +36,144 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      // 1. Call API to log in and get the response
-      // This response contains 'token', 'role', 'userId', 'fullName'
       final Map<String, dynamic> response = await ApiService.login(
         _emailController.text,
         _passwordController.text,
       );
 
-      // 2. Extract and save the token
       final String? token = response['token']?.toString();
       if (token != null && token.isNotEmpty) {
         await StorageService.saveToken(token);
-        print(
-          'LoginScreen: Token saved: ${token.substring(0, 20)}...',
-        ); // Debug print
       } else {
         throw Exception('Token not found or empty in login response.');
       }
 
-      // 3. Extract basic user info and role from the initial login response
       final String? roleStringFromLoginResponse = response['role']?.toString();
       final int? userIdFromLogin = response['userId'] as int?;
       final String? fullNameFromLogin = response['fullName'] as String?;
+      final String? emailFromLogin = response['email'] as String?;
 
-      if (userIdFromLogin == null || fullNameFromLogin == null || roleStringFromLoginResponse == null) {
-        throw Exception('Login response missing essential user details (userId, fullName, role).');
+      if (userIdFromLogin == null ||
+          fullNameFromLogin == null ||
+          roleStringFromLoginResponse == null) {
+        throw Exception(
+          'Login response missing essential user details (userId, fullName, role).',
+        );
       }
 
-      // Clean the role string (e.g., "ROLE_EMPLOYEE" -> "employee")
-      String cleanRoleString = roleStringFromLoginResponse.toLowerCase().replaceAll('role_', '');
+      String cleanRoleString = roleStringFromLoginResponse
+          .toLowerCase()
+          .replaceAll('role_', '');
       UserRole parsedRole = UserRole.values.firstWhere(
-            (e) => e.toString().split('.').last == cleanRoleString,
-        orElse: () => UserRole.customer, // Default to customer if role is unrecognized
+        (e) => e.toString().split('.').last == cleanRoleString,
+        orElse: () => UserRole.customer,
       );
 
-      print('LoginScreen: Parsed Role from login response: ${parsedRole.toString().split('.').last}');
-
-      // 4. Based on the parsed role, fetch the appropriate profile details
       if (parsedRole == UserRole.employee) {
-        try {
-          final Employee employeeDetails = await ApiService.getEmployeeDetails(token);
-          await StorageService.saveEmployee(employeeDetails); // Save the full Employee object
-          print('LoginScreen: Employee profile fetched and saved: ${employeeDetails.fullName}, ID: ${employeeDetails.employeeId}, Role: ${employeeDetails.role.toString().split('.').last}');
-
-          // Also save a basic User object for common app features (e.g., profile screen uses User)
-          // We use employeeId as userId for consistency in User model
-          await StorageService.saveUser(User(
+        final Employee employeeDetails =
+            await ApiEmployeeService.getEmployeeDetails(token);
+        await StorageService.saveEmployee(employeeDetails);
+        await StorageService.saveUser(
+          User(
             userId: employeeDetails.employeeId,
             fullName: employeeDetails.fullName,
             email: employeeDetails.email,
-            phoneNumber: employeeDetails.phoneNumber,
-            role: employeeDetails.role,
-            membershipType: 'Employee', // Set a default or fetch if available
-            loyaltyPoints: 0, // Employees might not have loyalty points
+            role:
+                employeeDetails.roles.isNotEmpty
+                    ? UserRole.values.firstWhere(
+                      (e) =>
+                          e.toString().split('.').last ==
+                          employeeDetails.roles.first.roleName.toLowerCase(),
+                      orElse: () => UserRole.customer,
+                    )
+                    : UserRole.customer,
+            membershipType: 'Employee',
+            loyaltyPoints: 0,
             createdAt: employeeDetails.createdAt?.toIso8601String(),
-          ));
-        } catch (e) {
-          // If fetching employee details fails, it's a critical error for employee login
-          throw Exception('Failed to fetch employee profile after login: $e. Please check /api/employees/profile endpoint.');
-        }
-      } else { // For Admin and Customer roles, use the general /api/user/profile endpoint
-        try {
-          final User userProfileFromApi = await ApiService.getProfile(token);
-          await StorageService.saveUser(userProfileFromApi); // Save the full User object
-          print('LoginScreen: User profile fetched and saved: ${userProfileFromApi.fullName}, ID: ${userProfileFromApi.userId}, Role: ${userProfileFromApi.role.toString().split('.').last}');
-        } catch (e) {
-          // If fetching user profile fails, it's a critical error for admin/customer login
-          throw Exception('Failed to fetch user profile after login: $e. Please check /api/user/profile endpoint.');
-        }
+            phoneNumber: '',
+          ),
+        );
+      } else if (parsedRole == UserRole.admin) {
+        // Lưu user trực tiếp từ response login, không gọi profile
+        await StorageService.saveUser(
+          User(
+            userId: userIdFromLogin,
+            fullName: fullNameFromLogin,
+            email: emailFromLogin ?? '',
+            role: UserRole.admin,
+            membershipType: '',
+            loyaltyPoints: 0,
+            createdAt: '',
+            phoneNumber: '',
+          ),
+        );
+      } else {
+        // Customer: lấy profile chi tiết
+        final User userProfileFromApi = await ApiUserService.getMyProfile();
+        await StorageService.saveUser(userProfileFromApi);
       }
 
-      // 5. Navigate based on user role (using the parsedRole from step 3/4)
       if (mounted) {
         if (parsedRole == UserRole.admin) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+            MaterialPageRoute(
+              builder: (context) => const AdminDashboardScreen(),
+            ),
           );
         } else if (parsedRole == UserRole.employee) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const EmployeeDashboardScreen()),
+            MaterialPageRoute(
+              builder: (context) => const EmployeeDashboardScreen(),
+            ),
           );
-        } else { // Default to customer role for any other roles or if role is not explicitly admin/employee
+        } else {
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (context) => const HomeScreen()),
           );
         }
       }
     } catch (e) {
-      print('LoginScreen: Login failed: $e');
+      String errorMessageForUser = 'Đăng nhập thất bại. Vui lòng thử lại.';
+      String rawErrorMessage = e.toString();
+
+      if (rawErrorMessage.startsWith('Network error: ')) {
+        rawErrorMessage =
+            rawErrorMessage.substring('Network error: '.length).trim();
+      }
+      if (rawErrorMessage.startsWith('Exception: ')) {
+        errorMessageForUser =
+            rawErrorMessage.substring('Exception: '.length).trim();
+      } else {
+        errorMessageForUser = rawErrorMessage.trim();
+      }
+      if (errorMessageForUser.isEmpty || errorMessageForUser == 'null') {
+        errorMessageForUser = 'Đã xảy ra lỗi không xác định. Vui lòng thử lại.';
+      } else if (errorMessageForUser.contains('SocketException') ||
+          errorMessageForUser.contains('HandshakeException')) {
+        errorMessageForUser =
+            'Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng của bạn.';
+      } else if (errorMessageForUser.contains(
+        'Failed to fetch employee profile',
+      )) {
+        errorMessageForUser =
+            'Đăng nhập thành công nhưng không thể lấy thông tin hồ sơ nhân viên. Vui lòng thử lại hoặc liên hệ hỗ trợ.';
+      } else if (errorMessageForUser.contains('Token not found') ||
+          errorMessageForUser.contains(
+            'Login response missing essential user details',
+          )) {
+        errorMessageForUser =
+            'Phản hồi từ máy chủ không hợp lệ. Vui lòng thử lại.';
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Đăng nhập thất bại: $e')));
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $errorMessageForUser')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
-  // --- PHẦN GIAO DIỆN ĐƯỢC CẢI TIẾN (NO CHANGES HERE) ---
 
   @override
   Widget build(BuildContext context) {
@@ -279,19 +320,19 @@ class _LoginScreenState extends State<LoginScreen> {
         foregroundColor: Colors.white,
       ),
       child:
-      _isLoading
-          ? const SizedBox(
-        width: 24,
-        height: 24,
-        child: CircularProgressIndicator(
-          color: Colors.white,
-          strokeWidth: 3,
-        ),
-      )
-          : const Text(
-        'Đăng nhập',
-        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      ),
+          _isLoading
+              ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 3,
+                ),
+              )
+              : const Text(
+                'Đăng nhập',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
     );
   }
 

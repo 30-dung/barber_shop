@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import '../booking/store_selection_screen.dart';
-import '../booking/my_bookings_screen.dart';
+import 'package:shine_booking_app/screens/appointment/my_appointments_screen.dart';
+import 'package:shine_booking_app/screens/appointment/store_selection_screen.dart';
 import '../profile/profile_screen.dart';
-import '../payment/invoice_list_screen.dart'; // Import màn hình danh sách hóa đơn
+import '../payment/invoice_list_screen.dart';
+// ignore: duplicate_import
+import '../appointment/my_appointments_screen.dart'; // Đảm bảo import đúng// Import màn hình danh sách hóa đơn
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,7 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const HomeTab(),
     const StoreSelectionScreen(serviceDetail: null, selectedStore: null),
-    const MyBookingsScreen(),
+    const MyAppointmentsScreen(), // Đúng tên class
     const ProfileScreen(),
   ];
 
